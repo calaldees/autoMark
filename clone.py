@@ -59,6 +59,11 @@ def do():
             assert cmd_result.returncode == 0
             assert path_target.is_dir()
 
+# TODO: 
+# Warn if repo size bigger than XX
+# `du -shc *``
+# Exclude from date (only newer?)
+# Collect results somehow (junit?) is this worthwhile?
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
