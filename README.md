@@ -11,6 +11,7 @@ https://docs.github.com/en/rest/reference/actions#artifacts
 
 
 ```python
+import datetime
 datetime_start = datetime.datetime.now()-datetime.timedelta(days=120)
 datetime_start = datetime.datetime(year=2022, month=1, day=1)
 
@@ -19,13 +20,15 @@ from os import environ
 from github import Github
 g = Github(environ['GITHUB_TOKEN'])
 r = g.get_repo('calaldees/frameworks_and_languages_module')
+
+# ref can be omitted for HEAD
+print(r.get_contents("README.md", ref="f8eca19cce30bade786a4948a2cef1c881873a3d").decoded_content.decode('utf8'))
+
 forks = tuple(fork for fork in r.get_forks() if fork.pushed_at > datetime_start)
 
-print(r.get_contents("README.md").decoded_content.decode('utf8'))
-
-r.parent  # ?? same as source?
 
 ff = forks[0]
+ff.parent  # repository object for forked from 
 ff.updated_at  # datetime of commit
 ff.pushed_at  # datetime of actual push
 
@@ -46,8 +49,8 @@ rr.head_sha
 rr.updated_at
 rr.artifacts_url
 
-from github_artifacts import GithubArtifacts
-GithubArtifacts(rr.artifacts_url).junitxml
+from github_artifacts import GithubArtifactsJUnit
+GithubArtifactsJUnit(rr.artifacts_url).junit_json
 
 
 ```

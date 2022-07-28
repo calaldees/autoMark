@@ -7,9 +7,6 @@ from os import environ
 
 import requests
 
-from xml.etree import ElementTree
-from junitparser import JUnitXml
-
 
 GITHUB_API_HEADERS = {
     "Accept": "application/vnd.github+json",
@@ -33,19 +30,38 @@ class GithubArtifacts():
     def zipfile(self):
         assert self.data["total_count"] == 1
         return self.get_zipfile(next(iter(self.artifact_urls.keys())))
+
+
+class GithubArtifactsJUnit(GithubArtifacts):
     @property
-    def junitxml(self):
-        return JUnitXml.fromroot(ElementTree.parse(self.zipfile.open("junit.xml")).getroot())
-        #from xml.dom.minidom import parse as parse_xml
-        #return parse_xml(self.zipfile.open("junit.xml"))
+    def junit_minidom(self):
+        from xml.dom.minidom import parse as parse_xml
+        return parse_xml(self.zipfile.open("junit.xml"))
+    @property
+    def junit_ElementTree(self):
+        from xml.etree import ElementTree
+        return ElementTree.parse(self.zipfile.open("junit.xml"))
+    @property
+    def JUnitXml(self):
+        from junitparser import JUnitXml
+        return JUnitXml.fromroot(self.junit_ElementTree.getroot())
+    @property
+    def junit_json(self):
+        import xmljson
+        data = xmljson.BadgerFish().data(self.junit_ElementTree.getroot())
+        return data['testsuites']['testsuite']
+    #@property
+    #def report_json(self):
+    #    # https://pypi.org/project/pytest-json-report/
+    #    import json
+    #    return json.load(self.zipfile.open("report.json"))
+
 
 
 
 if __name__ == "__main__":
-    aa = GithubArtifacts('https://api.github.com/repos/calaldees/frameworks_and_languages_module/actions/runs/2733608648/artifacts')
+    aa = GithubArtifactsJUnit('https://api.github.com/repos/calaldees/frameworks_and_languages_module/actions/runs/2733608648/artifacts')
 
-    for testsuite in aa.junitxml:
-        for test in testsuite:
-            print(test)
-            #breakpoint()
+    #['testcase']
 
+    from pprint import pprint as pp
