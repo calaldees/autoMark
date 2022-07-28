@@ -15,7 +15,7 @@ Test1
 This is a test.
 * thing1
   * thing1.5
-* thing2
+* [thing2](http://example.com/) a link
 End of test
 
 code
@@ -34,7 +34,6 @@ Another test.
 def parse(data):
     return marko.Markdown().parse(data)
 
-#itertools.chain.from_iterable(block.children)
 def _children_text(block):
     if not hasattr(block, 'children'):
         return
@@ -48,7 +47,7 @@ def _block_text(block):
 def markdown_text_dicts(blocks):
     r'''
     >>> markdown_text_dicts(parse(md_test).children)
-    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\nEnd of test', 'code': {'': 'Some code'}}, 'Test2': {'': 'Another test.'}}
+    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\n a link\nEnd of test', 'code': {'': 'Some code'}}, 'Test2': {'': 'Another test.'}}
     '''
     data = tree()
     heading_stack = []
@@ -86,8 +85,8 @@ def markdown_codeblock_languages(block):
     '''
     raise NotImplementedError()
 
-bb = parse(md_test)
-from pprint import pprint
-pprint(
-    markdown_text_dicts(bb.children)
-)
+#bb = parse(md_test)
+#from pprint import pprint
+#pprint(
+#    markdown_text_dicts(bb.children)
+#)
