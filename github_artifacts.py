@@ -1,12 +1,13 @@
 from functools import cached_property
 from types import MappingProxyType
 from zipfile import ZipFile
-from xml.etree import ElementTree
 import io
 import re
 from os import environ
 
 import requests
+
+from xml.etree import ElementTree
 from junitparser import JUnitXml
 
 
@@ -40,10 +41,11 @@ class GithubArtifacts():
 
 
 
-aa = GithubArtifacts('https://api.github.com/repos/calaldees/frameworks_and_languages_module/actions/runs/2733608648/artifacts')
+if __name__ == "__main__":
+    aa = GithubArtifacts('https://api.github.com/repos/calaldees/frameworks_and_languages_module/actions/runs/2733608648/artifacts')
 
-for testsuite in aa.junitxml:
-    for test in testsuite:
-        print(test)
-        #breakpoint()
+    for testsuite in aa.junitxml:
+        for test in testsuite:
+            print(test)
+            #breakpoint()
 
