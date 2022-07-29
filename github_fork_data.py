@@ -6,6 +6,12 @@ from collections import defaultdict
 from types import MappingProxyType
 
 from cache_tools import cache_disk
+from github_artifacts import GithubArtifactsJUnit
+
+
+import logging
+log = logging.getLogger(__name__)
+
 
 def addClass(obj, cls):
     # https://stackoverflow.com/a/11050571/3356840
@@ -54,13 +60,27 @@ class GitHubForkData():
     def _get_workflow_by_name(repo, name):
         return next((w for w in repo.get_workflows() if w.name == name), None)
 
+    @cache_disk(args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'))
+    def _get_workflow_artifacts(self, commit):
+        def get_junit(artifacts_url):
+            try:
+                return GithubArtifactsJUnit(artifacts_url).junit_json
+            except:
+                return None
+        return tuple(filter(None, (
+            get_junit(artifacts_url)
+            for artifacts_url in self.workflow_run_artifacts_url_lookup[commit.sha]
+        )))
+
     @cache
     def _commits_per_week(self, repo):
         commits = defaultdict(list)
         def _commit_week_number(commit):
             return (commit.commit.committer.date - self.date_start) // self.timedelta
         for commit in repo.get_commits(since=self.date_start, author=repo.owner):
-            commits[_commit_week_number(commit)].append(commit)
+            commits[_commit_week_number(commit)].append(_add_methods(commit,
+                self._get_workflow_artifacts,
+            ))
         return harden(commits)
 
     @cached_property
@@ -74,18 +94,20 @@ class GitHubForkData():
             if fork.pushed_at > self.date_start
         )
 
-    @cached_property  # TODO: cache_disk (1 day)
+    @cached_property
     @cache_disk(args_to_bytes_func=lambda self: self.repo.full_name.encode('utf8'))
     def workflow_run_artifacts_url_lookup(self):
-        print("yee")
-        runs = {}
+        log.info("generating workflow_run_artifacts_url_lookup")
+        # TODO: progress bar?
+        runs = defaultdict(list)
         #for repo in self.forks:    # TEMP HACK for development
         for repo in (self.repo, ):  # TEMP HACK for development
             for workflow in repo.get_workflows():
                 if workflow.name in self.settings['workflows']:
                     for run in workflow.get_runs():
-                        runs[run.head_sha] = run.artifacts_url
+                        runs[run.head_sha].append(run.artifacts_url)
         return runs  # TODO: harden?
+
 
 
 
@@ -98,6 +120,8 @@ class GitHubForkData():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     from pprint import pprint as pp
     import json
 
@@ -110,8 +134,13 @@ if __name__ == "__main__":
     g = github.Github(environ['GITHUB_TOKEN'])
 
     gg = GitHubForkData(g, settings)
-    #cc = gg.forks[0]._commits_per_week()
     runs = gg.workflow_run_artifacts_url_lookup
+    cc = gg._commits_per_week(gg.repo)
+    art = cc[81][2]._get_workflow_artifacts()
+    #cc = gg.forks[0]._commits_per_week()
+    # cc[81][8]
+    # 
+    
     breakpoint()
 
     
