@@ -60,7 +60,10 @@ class GitHubForkData():
     def _get_workflow_by_name(repo, name):
         return next((w for w in repo.get_workflows() if w.name == name), None)
 
-    @cache_disk(args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'))
+    @cache_disk(
+        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'),
+        ttl=datetime.timedelta(days=150),
+    )
     def _get_workflow_artifacts(self, commit):
         def get_junit(artifacts_url):
             try:
@@ -73,7 +76,7 @@ class GitHubForkData():
         )))
 
     @cache
-    def _commits_per_week(self, repo):
+    def _commits_grouped_by_week(self, repo):
         commits = defaultdict(list)
         def _commit_week_number(commit):
             return (commit.commit.committer.date - self.date_start) // self.timedelta
@@ -87,7 +90,7 @@ class GitHubForkData():
     def forks(self):
         return tuple(
             _add_methods(fork, 
-                self._commits_per_week,
+                self._commits_grouped_by_week,
                 self._get_workflow_by_name,
             )
             for fork in self.repo.get_forks()
@@ -95,7 +98,10 @@ class GitHubForkData():
         )
 
     @cached_property
-    @cache_disk(args_to_bytes_func=lambda self: self.repo.full_name.encode('utf8'))
+    @cache_disk(
+        args_to_bytes_func=lambda self: self.repo.full_name.encode('utf8'),
+        ttl=datetime.timedelta(days=6),
+    )
     def workflow_run_artifacts_url_lookup(self):
         log.info("generating workflow_run_artifacts_url_lookup")
         # TODO: progress bar?
@@ -135,7 +141,7 @@ if __name__ == "__main__":
 
     gg = GitHubForkData(g, settings)
     runs = gg.workflow_run_artifacts_url_lookup
-    cc = gg._commits_per_week(gg.repo)
+    cc = gg._commits_grouped_by_week(gg.repo)
     art = cc[81][2]._get_workflow_artifacts()
     #cc = gg.forks[0]._commits_per_week()
     # cc[81][8]
