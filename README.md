@@ -16,8 +16,10 @@ datetime_start = datetime.datetime.now()-datetime.timedelta(days=120)
 datetime_start = datetime.datetime(year=2022, month=1, day=1)
 
 
-from os import environ
+
 from github import Github
+
+from os import environ
 g = Github(environ['GITHUB_TOKEN'])
 r = g.get_repo('calaldees/frameworks_and_languages_module')
 
