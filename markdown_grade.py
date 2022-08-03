@@ -61,19 +61,22 @@ def get_text_at_headings(data, headings):
     'some text'
     >>> get_text_at_headings(data, ('Heading1', 2))
     'final'
+    >>> get_text_at_headings(data, ('Some nonsense', 'more nonsense'))
     """
     for heading in map(_normalise_heading, headings):
-        if isinstance(heading, int):
+        try:
             heading = tuple(data.keys())[heading]
+        except:
+            pass
         if heading in data:
             data = data[heading]
     return data.get('')
 
 
 def mark(template, target):
-    for text, headings in nested_headings_iterator(template):
-        breakpoint()
-
+    for template_text, headings in nested_headings_iterator(template):
+        target_text = get_text_at_headings(target, headings)
+        print(f'{template_text=} {target_text=}')
 
 
 if __name__ == "__main__":
