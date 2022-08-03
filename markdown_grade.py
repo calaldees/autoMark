@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from markdown_parse import load_markdown_file
@@ -5,6 +6,10 @@ from markdown_parse import load_markdown_file
 #from junitparser import JUnitXml  # https://pypi.org/project/junitparser/
 #from junitparser import TestCase, TestSuite, JUnitXml, Skipped, Error
 import junitparser
+
+REGEX_NUMBER_IN_BRACKETS = re.compile(r'\(.*(?P<number>\d+).*\)')
+REGEX_MARKS_IN_BRACKETS = re.compile(r'\(.*(?P<marks>\d+)\s+mark.*\)')
+REGEX_WORDS_IN_BRACKETS = re.compile(r'\(.*(?P<words>\d+)\s+word.*\)')
 
 
 def temp():
@@ -38,15 +43,31 @@ def nested_headings_iterator(data, heading=()):
         else:
             yield from nested_headings_iterator(v, heading=heading+(k,))
 
-def get_headings(data, headings):
+def _normalise_heading(heading):
+    """
+    >>> _normalise_heading('heading')
+    'heading'
+    >>> _normalise_heading('(heading 3 - I think)')
+    3
+    """
+    try:
+        return int(REGEX_NUMBER_IN_BRACKETS.search(heading).group(1))
+    except:
+        return heading
+def get_text_at_headings(data, headings):
     """
     >>> data = {'Heading1': {'': 'some text', 'Heading2 (heading order 1)': {'': 'Some more text', 'Heading3.a': {'': ''}}, 'Heading2 (heading order 2)': {'': 'final'} }}
-    >>> get_headings(data, ('Heading1',))
+    >>> get_text_at_headings(data, ('Heading1',))
     'some text'
-    >>> get_headings(data, ('Heading1', 2))
+    >>> get_text_at_headings(data, ('Heading1', 2))
     'final'
     """
-    raise NotImplementedError()
+    for heading in map(_normalise_heading, headings):
+        if isinstance(heading, int):
+            heading = tuple(data.keys())[heading]
+        if heading in data:
+            data = data[heading]
+    return data.get('')
 
 
 def mark(template, target):
