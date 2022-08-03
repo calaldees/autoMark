@@ -1,7 +1,6 @@
-import itertools
-from typing import Iterator
 from collections import defaultdict
 tree = lambda: defaultdict(tree)
+from pathlib import Path
 
 import marko
 
@@ -55,18 +54,19 @@ def markdown_text_dicts(blocks):
         _d = data
         for k in heading_stack:
             _d = _d[k]
-        return _d
+        return _d.setdefault('', [])
 
     for block in blocks:
         _level = getattr(block, 'level', len(heading_stack))
-        if _level > len(heading_stack):
-            heading_stack[:] = heading_stack + ['']*(_level-1 - len(heading_stack))
+        if _level != len(heading_stack):
+            if _level > len(heading_stack):
+                heading_stack[:] = heading_stack + ['(unknown)']*(_level-1 - len(heading_stack))
+            if _level < len(heading_stack):
+                heading_stack[:] = heading_stack[:_level-1]
             heading_stack.append(_block_text(block))
-        if _level < len(heading_stack):
-            heading_stack[:] = heading_stack[:_level-1]
-            heading_stack.append(_block_text(block))
+            get_data()
         if block.get_type() in ('Paragraph', 'List'):
-            get_data().setdefault('', []).append(_block_text(block))
+            get_data().append(_block_text(block))
 
     def normalise_data(data):
         for k, v in data.items():
@@ -90,3 +90,6 @@ def markdown_codeblock_languages(block):
 #pprint(
 #    markdown_text_dicts(bb.children)
 #)
+
+def load_markdown_file(filename):
+    return markdown_text_dicts(parse(Path(filename).open('rt').read()).children)

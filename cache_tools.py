@@ -8,8 +8,13 @@ import logging
 log = logging.getLogger(__name__)
 
 
+class DoNotPersistCacheException(Exception):
+    pass
+
+
 def cache_disk(original_function=None, cache_path=Path('__cache'), ttl=datetime.timedelta(days=1), cache_only=False, args_to_bytes_func=lambda *args, **kwargs: pickle.dumps((args, kwargs))):
     """
+    TODO: doctests with tempfile.tempdir
     """
     assert isinstance(cache_path, Path)
     assert isinstance(ttl, datetime.timedelta)
@@ -28,7 +33,10 @@ def cache_disk(original_function=None, cache_path=Path('__cache'), ttl=datetime.
                 log.debug(f'cache_only - refusing to run original function')
                 return
 
-            _return = function(*args, **kwargs)  # Wrapped function
+            try:
+                _return = function(*args, **kwargs)  # Wrapped function
+            except DoNotPersistCacheException as ex:
+                return
 
             log.info(f'persisting to cache {args=} {kwargs=}')
             pickle.dump(_return, cache.open(mode='wb'))

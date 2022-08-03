@@ -5,9 +5,10 @@ from typing import NamedTuple
 from collections import defaultdict
 from types import MappingProxyType
 
-from cache_tools import cache_disk
+from cache_tools import cache_disk, DoNotPersistCacheException
 from github_artifacts import GithubArtifactsJUnit
 
+#from clint.textui.progress import bar as progress_bar
 
 import logging
 log = logging.getLogger(__name__)
@@ -65,14 +66,16 @@ class GitHubForkData():
         ttl=datetime.timedelta(days=150),
     )
     def _get_workflow_artifacts(self, commit):
+        artifact_urls = self.workflow_run_artifacts_url_lookup[commit.sha]
+        if not artifact_urls:
+            raise DoNotPersistCacheException()
         def get_junit(artifacts_url):
             try:
                 return GithubArtifactsJUnit(artifacts_url).junit_json
             except:
                 return None
         return tuple(filter(None, (
-            get_junit(artifacts_url)
-            for artifacts_url in self.workflow_run_artifacts_url_lookup[commit.sha]
+            get_junit(artifacts_url) for artifacts_url in artifact_urls
         )))
 
     @cache
@@ -106,7 +109,7 @@ class GitHubForkData():
         log.info("generating workflow_run_artifacts_url_lookup")
         # TODO: progress bar?
         runs = defaultdict(list)
-        #for repo in self.forks:    # TEMP HACK for development
+        #for repo in progress_bar(self.forks):    # TEMP HACK for development
         for repo in (self.repo, ):  # TEMP HACK for development
             for workflow in repo.get_workflows():
                 if workflow.name in self.settings['workflows']:
