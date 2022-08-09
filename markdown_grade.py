@@ -5,9 +5,7 @@ from typing import NamedTuple, Tuple
 
 from markdown_parse import load_markdown_file
 
-#from junitparser import JUnitXml  # https://pypi.org/project/junitparser/
-#from junitparser import TestCase, TestSuite, JUnitXml, Skipped, Error
-import junitparser
+import junitparser  # https://pypi.org/project/junitparser/
 
 REGEX_NUMBER_IN_BRACKETS = re.compile(r'\(.*(?P<number>\d+).*\)')
 
@@ -62,11 +60,13 @@ def get_text_at_headings(data, headings):
 class MarkTemplate(NamedTuple):
     headings: tuple[str]
     template_text: str
-    def mark(self, target_text):
-        testcase = junitparser.TestCase(
-            name=f'{self.headings[-1]} ({self.marks} marks)', 
-            classname='.'.join(self.headings),
-        )
+    @property
+    def marks(self) -> int:
+        raise NotImplementedError
+    def testcase(self, target_text) -> junitparser.TestCase:
+        testcase = junitparser.TestCase()
+        testcase.name = f'{self.headings[-1]} ({self.marks} marks)'
+        testcase.classname = '.'.join(self.headings)
         testcase.system_out = self.template_text
         testcase.system_err = target_text
         return testcase
@@ -87,8 +87,8 @@ class MarkTemplateWordCount(MarkTemplate):
     def marks(self):
         return sum(map(operator.itemgetter(1), self._words_marks))
 
-    def mark(self, target_text):
-        testcase = super().mark(target_text)
+    def testcase(self, target_text):
+        testcase = super().testcase(target_text)
         testcase.result  # TODO
         #case1.classname = "modified.class.name" # specify or change case attrs
         #case1.result = [Skipped()] # You can have a list of results
@@ -104,8 +104,8 @@ class MarkTemplateCodeBlock(MarkTemplate):
     @property
     def marks(self):
         pass
-    def mark(self, target_text):
-        testcase = super().mark(target_text)
+    def testcase(self, target_text):
+        testcase = super().testcase(target_text)
         return testcase
 
 class MarkTemplateUrls(MarkTemplate):
@@ -116,8 +116,8 @@ class MarkTemplateUrls(MarkTemplate):
     @property
     def marks(self):
         pass
-    def mark(self, target_text):
-        testcase = super().mark(target_text)
+    def testcase(self, target_text):
+        testcase = super().testcase(target_text)
         return testcase
 
 
@@ -127,10 +127,10 @@ _mark_templates=(MarkTemplateWordCount, MarkTemplateCodeBlock, MarkTemplateUrls)
 def mark_template(template, target):
     for template_text, headings in nested_headings_iterator(template):
         target_text = get_text_at_headings(target, headings)
-        yield from (
-            MarkTemplate(headings, template_text).mark(target_text)
+        yield from filter(None, (
+            MarkTemplate(headings, template_text).testcase(target_text)
             for MarkTemplate in _mark_templates
-        )
+        ))
 
 if __name__ == "__main__":
     template = load_markdown_file('../frameworks_and_languages_module/technical_report.md')
