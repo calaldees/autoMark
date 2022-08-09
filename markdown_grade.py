@@ -1,5 +1,7 @@
+from functools import cached_property
+import operator
 import re
-from pathlib import Path
+from typing import NamedTuple, Tuple
 
 from markdown_parse import load_markdown_file
 
@@ -8,28 +10,10 @@ from markdown_parse import load_markdown_file
 import junitparser
 
 REGEX_NUMBER_IN_BRACKETS = re.compile(r'\(.*(?P<number>\d+).*\)')
-REGEX_MARKS_IN_BRACKETS = re.compile(r'\(.*(?P<marks>\d+)\s+mark.*\)')
-REGEX_WORDS_IN_BRACKETS = re.compile(r'\(.*(?P<words>\d+)\s+word.*\)')
 
 
-def temp():
 
-    case1 = junitparser.TestCase('case1', 'class.name') # params are optional
-    #case1.classname = "modified.class.name" # specify or change case attrs
-    case1.result = [Skipped()] # You can have a list of results
-    case2 = TestCase('case2')
-    case2.result = [Error('Example error message', 'the_error_type')]
-
-
-    suite = junitparser.TestSuite('markdown')
-    suite.add_property('build', '55')
-    suite.add_testcase(case1)
-    suite.add_testcase(case2)
-
-    xml = JUnitXml()
-    xml.add_testsuite(suite)
-    xml.write('junit.xml')
-
+# Data Extraction --------------------------------------------------------------
 
 def nested_headings_iterator(data, heading=()):
     """
@@ -73,13 +57,90 @@ def get_text_at_headings(data, headings):
     return data.get('')
 
 
-def mark(template, target):
+# Mark to Test -----------------------------------------------------------------
+
+class MarkTemplate(NamedTuple):
+    headings: tuple[str]
+    template_text: str
+    def mark(self, target_text):
+        testcase = junitparser.TestCase(
+            name=f'{self.headings[-1]} ({self.marks} marks)', 
+            classname='.'.join(self.headings),
+        )
+        testcase.system_out = self.template_text
+        testcase.system_err = target_text
+        return testcase
+
+class MarkTemplateWordCount(MarkTemplate):
+    REGEX_WORDS_MARKS = re.compile(r'(?P<words>\d+)\s+word.*?(?P<marks>\d+)\s+mark')
+
+    @cached_property
+    def _words_marks(self):
+        return tuple(
+            (int(match.group(1)), int(match.group(2)))
+            for match in self.REGEX_WORDS_MARKS.finditer(self.template_text)
+        )
+    @property
+    def words(self):
+        return sum(map(operator.itemgetter(0), self._words_marks))
+    @property
+    def marks(self):
+        return sum(map(operator.itemgetter(1), self._words_marks))
+
+    def mark(self, target_text):
+        testcase = super().mark(target_text)
+        testcase.result  # TODO
+        #case1.classname = "modified.class.name" # specify or change case attrs
+        #case1.result = [Skipped()] # You can have a list of results
+
+        #case2 = TestCase('case2')
+        #case2.result = [Error('Example error message', 'the_error_type')]
+        return testcase
+
+class MarkTemplateCodeBlock(MarkTemplate):
+    @property
+    def code_blocks(self):
+        pass
+    @property
+    def marks(self):
+        pass
+    def mark(self, target_text):
+        testcase = super().mark(target_text)
+        return testcase
+
+class MarkTemplateUrls(MarkTemplate):
+    REGEX_URLS = re.compile(r'https?://')
+    @property
+    def urls(self):
+        return sum(int(match.group(1)) for match in self.REGEX_URLS.finditer())
+    @property
+    def marks(self):
+        pass
+    def mark(self, target_text):
+        testcase = super().mark(target_text)
+        return testcase
+
+
+
+_mark_templates=(MarkTemplateWordCount, MarkTemplateCodeBlock, MarkTemplateUrls)
+
+def mark_template(template, target):
     for template_text, headings in nested_headings_iterator(template):
         target_text = get_text_at_headings(target, headings)
-        print(f'{template_text=} {target_text=}')
-
+        yield from (
+            MarkTemplate(headings, template_text).mark(target_text)
+            for MarkTemplate in _mark_templates
+        )
 
 if __name__ == "__main__":
     template = load_markdown_file('../frameworks_and_languages_module/technical_report.md')
     target = load_markdown_file('README.md')
-    mark(template, target)
+
+    suite = junitparser.TestSuite('markdown')
+    suite.add_property('build', '55')
+    for testcase in mark_template(template, target):
+        suite.add_testcase(testcase)
+        print(testcase)
+    xml = junitparser.JUnitXml()
+    xml.add_testsuite(suite)
+    xml.write('junit.xml')

@@ -42,11 +42,15 @@ def _children_text(block):
         yield from _children_text(child)
 def _block_text(block):
     return '\n'.join(_children_text(block))
+def _block_code_summary(block):
+    assert block.get_type() == 'FencedCode'
+    line_count = block.children[0].children.count('\n')
+    return f'FencedCode:{block.lang}:{line_count}'
 
 def markdown_text_dicts(blocks):
     r'''
     >>> markdown_text_dicts(parse(md_test).children)
-    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\n a link\nEnd of test', 'code': {'': 'Some code'}}, 'Test2': {'': 'Another test.'}}
+    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\n a link\nEnd of test', 'code': {'': 'Some code\nFencedCode:javascript:1'}}, 'Test2': {'': 'Another test.'}}
     '''
     data = tree()
     heading_stack = []
@@ -67,6 +71,8 @@ def markdown_text_dicts(blocks):
             get_data()
         if block.get_type() in ('Paragraph', 'List'):
             get_data().append(_block_text(block))
+        if block.get_type() == 'FencedCode':
+            get_data().append(_block_code_summary(block))
 
     def normalise_data(data):
         for k, v in data.items():
@@ -80,7 +86,7 @@ def markdown_text_dicts(blocks):
 
 def markdown_codeblock_languages(block):
     r'''
-    >>> markdown_codeblock_langauges(parse(md_test))
+    >>> markdown_codeblock_languages(parse(md_test))
     {'javascript': ['function test() {return "yes"}']}
     '''
     raise NotImplementedError()
