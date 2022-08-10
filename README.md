@@ -56,3 +56,5 @@ GithubArtifactsJUnit(rr.artifacts_url).junit_json
 
 
 ```
+
+* [Junit Specification](https://stackoverflow.com/a/9410271/3356840)
