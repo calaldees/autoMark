@@ -1,8 +1,7 @@
 from functools import cached_property
 from itertools import chain
-import operator
 import re
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
 
 from markdown_parse import load_markdown_file
 
@@ -99,20 +98,29 @@ class MarkTemplateUrls(MarkTemplate):
         urls = len(self.REGEX_URL_COUNT.findall(target_text or ''))
         for index, url in enumerate(self.urls):
             testcase = super()._testcase(target_text, index)
-            if urls < 0:
+            if urls <= 0:
                 testcase.result = [junitparser.Error(f'Url count failed: expected {index}', 'url_count')]
             yield testcase
             urls += -1
 
 class MarkTemplateCodeBlock(MarkTemplate):
-    @property
-    def code_blocks(self):
-        pass
+    REGEX_CODEBLOCK = re.compile(r'FencedCode:(\w+):(\d+)')
+    def _lang_lines(self, text):
+        return tuple(
+            (match.group(1), int(match.group(2)))
+            for match in self.REGEX_CODEBLOCK.finditer(text or '')
+        )
+    @cached_property
+    def _code_blocks(self):
+        return self._lang_lines(self.template_text)  # TODO: we should not be reusing REGEX_CODEBLOCK and should have a proper defection of languages and line-count
     def testcases(self, target_text):
-        yield
-        #return  # NotImplemented
-        #testcase = super().testcase(target_text)
-        #return testcase
+        lang_lines = self._lang_lines(target_text)
+        for index, (language, lines) in enumerate(self._code_blocks):
+            testcase = super()._testcase(target_text, index)
+            # TODO: this just counts code blocks, we probably want more
+            if index >= len(lang_lines):
+                testcase.result = [junitparser.Error(f'Code block count failed: expected {index}', 'code_block')]
+            yield testcase
 
 _mark_templates=(MarkTemplateWordCount, MarkTemplateUrls, MarkTemplateCodeBlock)
 
@@ -122,7 +130,7 @@ def mark_template(template, target):
     ...     'heading1.a': {
     ...         '': '(10 words - 1 mark)\n(10 words - 1 mark)\n',
     ...         'heading2': {
-    ...             '': '(code block)',
+    ...             '': 'FencedCode:javascript:5',
     ...         }, 
     ...     },
     ...     'heading1.b': {
@@ -140,7 +148,10 @@ def mark_template(template, target):
     ...         '': 'https://example.com/',
     ...      },
     ... }
-    >>> tuple(mark_template(template, target))
+    >>> tuple(testcase.is_passed for testcase in mark_template(template, target))
+    (True, True, True, True)
+    >>> tuple(testcase.is_passed for testcase in mark_template(template, {}))
+    (False, False, False, False)
     """
     for template_text, headings in nested_headings_iterator(template):
         target_text = get_text_at_headings(target, headings)
@@ -155,9 +166,7 @@ if __name__ == "__main__":
 
     suite = junitparser.TestSuite('markdown')
     suite.add_property('build', '55')
-    for testcase in mark_template(template, target):
-        suite.add_testcase(testcase)
-        print(testcase)
+    suite.add_testcases(mark_template(template, target))
     xml = junitparser.JUnitXml()
     xml.add_testsuite(suite)
     xml.write('junit.xml')
