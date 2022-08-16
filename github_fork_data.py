@@ -1,11 +1,12 @@
 import re
-from functools import partial, cache, cached_property
+from functools import cache, cached_property
 import datetime
 from pathlib import Path
 from typing import NamedTuple
 from collections import defaultdict
-from types import MappingProxyType
 
+
+from _utils import harden, _add_methods
 from cache_tools import cache_disk, DoNotPersistCacheException
 from github_artifacts import GithubArtifactsJUnit, junit_to_json
 from markdown_grade import markdown_grade
@@ -16,36 +17,6 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def addClass(obj, cls):
-    # https://stackoverflow.com/a/11050571/3356840
-    _cls = obj.__class__
-    obj.__class__ = _cls.__class__(_cls.__name__ + cls.__name__, (_cls, cls), {})
-
-def _add_methods(obj, *methods):
-    for method in methods:
-        setattr(obj, method.__name__, partial(method, obj))
-    return obj
-
-
-from typing import Mapping, Iterable
-def harden(data):
-    """
-    >>> harden({"a": [1,2,3]})
-    mappingproxy({'a': (1, 2, 3)})
-    >>> harden({"a": [1,2, {3}] })
-    mappingproxy({'a': (1, 2, (3,))})
-    >>> harden({"a": [1,2, {"b": 2}] })
-    mappingproxy({'a': (1, 2, mappingproxy({'b': 2}))})
-    >>> harden([1, {"c": True, "d": 3.14, "e": {"no", "no"}}])
-    (1, mappingproxy({'c': True, 'd': 3.14, 'e': ('no',)}))
-    """
-    if isinstance(data, str):
-        return data
-    if isinstance(data, Mapping):
-        return MappingProxyType({k: harden(v) for k, v in data.items()})
-    if isinstance(data, Iterable):
-        return tuple((harden(i) for i in data))
-    return data
 
 
 class GitHubForkData_MarkdownTemplateMixin():
@@ -59,7 +30,10 @@ class GitHubForkData_MarkdownTemplateMixin():
     @cached_property
     def markdown_template(self):
         return self._get_markdown_template(self.repo)
-    @cache
+    @cache_disk(
+        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8')+b'markdown',
+        ttl=datetime.timedelta(days=150),
+    )
     def markdown_grade_json(self, commit):
         return junit_to_json(markdown_grade(
             template=self.markdown_template,
@@ -96,7 +70,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             return (commit.commit.committer.date - self.date_start) // self.timedelta
         for commit in repo.get_commits(since=self.date_start, author=repo.owner):
             commits[_commit_week_number(commit)].append(_add_methods(commit,
-                self._get_workflow_artifacts,
+                self._get_workflow_artifacts_junit,
                 self._get_repo_from_commit,
             ))
         return harden(commits)
@@ -132,10 +106,10 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         return dict(runs)  # TODO: harden lists to tuples?
 
     @cache_disk(
-        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'),
+        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8')+b'artifact',
         ttl=datetime.timedelta(days=150),
     )
-    def _get_workflow_artifacts(self, commit):
+    def _get_workflow_artifacts_junit(self, commit):
         artifact_urls = self.workflow_run_artifacts_url_lookup[commit.sha]
         if not artifact_urls:
             raise DoNotPersistCacheException()
@@ -159,7 +133,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         if commits:  # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
             _return['markdown'] = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
         for commit in commits:
-            for junit_json in self._get_workflow_artifacts(commit):
+            for junit_json in self._get_workflow_artifacts_junit(commit): # or ()
                 pass  # TODO: merge json pytest - dedupe with latest only
         return _return
 
@@ -190,7 +164,7 @@ if __name__ == "__main__":
     runs = gg.workflow_run_artifacts_url_lookup
     cc = gg._commits_grouped_by_week(gg.repo)
     ccc = cc[30][0]
-    art = cc[81][2]._get_workflow_artifacts()
+    art = cc[81][2]._get_workflow_artifacts_junit()
     #cc = gg.forks[0]._commits_per_week()
     # cc[81][8]
     # 
