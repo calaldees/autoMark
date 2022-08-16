@@ -11,6 +11,7 @@ from cache_tools import cache_disk, DoNotPersistCacheException
 from github_artifacts import GithubArtifactsJUnit, junit_to_json
 from markdown_grade import markdown_grade
 
+import github
 #from clint.textui.progress import bar as progress_bar
 
 import logging
@@ -25,8 +26,11 @@ class GitHubForkData_MarkdownTemplateMixin():
     Maybe create my own 'github action' to provide the junit results on the repo directly.
     For now we can generate them here.
     """
-    def _get_markdown_template(self, repo, ref=None):
-        return repo.get_contents(self.settings["markdown_template_filename"], ref=ref).decoded_content.decode('utf8')
+    def _get_markdown_template(self, repo, ref=github.GithubObject.NotSet):
+        try:
+            return repo.get_contents(self.settings["markdown_template_filename"], ref=ref).decoded_content.decode('utf8')
+        except github.GithubException:
+            return ''
     @cached_property
     def markdown_template(self):
         return self._get_markdown_template(self.repo)
@@ -110,7 +114,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         ttl=datetime.timedelta(days=150),
     )
     def _get_workflow_artifacts_junit(self, commit):
-        artifact_urls = self.workflow_run_artifacts_url_lookup[commit.sha]
+        artifact_urls = self.workflow_run_artifacts_url_lookup.get(commit.sha)
         if not artifact_urls:
             raise DoNotPersistCacheException()
         def get_junit(artifacts_url):
@@ -133,7 +137,8 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         if commits:  # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
             _return['markdown'] = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
         for commit in commits:
-            for junit_json in self._get_workflow_artifacts_junit(commit): # or ()
+            for junit_json in self._get_workflow_artifacts_junit(commit) or ():
+                breakpoint()
                 pass  # TODO: merge json pytest - dedupe with latest only
         return _return
 
@@ -156,18 +161,17 @@ if __name__ == "__main__":
     with datafile.open('rt') as filehandle:
         settings = json.load(filehandle)
 
-    import github
     from os import environ
     g = github.Github(environ['GITHUB_TOKEN'])
 
     gg = GitHubForkData(g, settings)
-    runs = gg.workflow_run_artifacts_url_lookup
-    cc = gg._commits_grouped_by_week(gg.repo)
-    ccc = cc[30][0]
-    art = cc[81][2]._get_workflow_artifacts_junit()
+    #runs = gg.workflow_run_artifacts_url_lookup
+    #cc = gg._commits_grouped_by_week(gg.repo)
+    #ccc = cc[30][0]
+    #art = cc[81][2]._get_workflow_artifacts_junit()
     #cc = gg.forks[0]._commits_per_week()
     # cc[81][8]
-    # 
+    tt = gg._tests_grouped_by_week(gg.repo)
     
     breakpoint()
 

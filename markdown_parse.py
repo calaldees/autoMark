@@ -107,8 +107,11 @@ def load_markdown(data):
     >>> load_markdown(io.StringIO('# Test'))
     {'Test': {'': ''}}
     """
-    if isinstance(data, str) and Path(data).is_file():
-        data = Path(data)
+    try:
+        if isinstance(data, str) and Path(data).is_file():
+            data = Path(data)
+    except OSError:
+        pass
     if isinstance(data, Path):
         data = data.open('rt')
     if hasattr(data, 'read') and callable(data.read):

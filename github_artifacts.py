@@ -8,8 +8,12 @@ from os import environ
 import requests
 import xmljson
 
-def junit_to_json(elementTree):
-    data = xmljson.BadgerFish().data(elementTree.getroot())
+def junit_to_json(element):
+    if hasattr(element, 'getroot'):
+        element = element.getroot()
+    if hasattr(element, '_elem'):
+        element = element._elem
+    data = xmljson.BadgerFish().data(element)
     return data['testsuites']['testsuite']
 
 
