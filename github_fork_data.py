@@ -49,16 +49,21 @@ def harden(data):
 
 
 class GitHubForkData_MarkdownTemplateMixin():
-    def get_markdown_template(self, repo, ref=None):
+    """
+    In future this will be done as junit tests on the repo itself by a github action.
+    Maybe create my own 'github action' to provide the junit results on the repo directly.
+    For now we can generate them here.
+    """
+    def _get_markdown_template(self, repo, ref=None):
         return repo.get_contents(self.settings["markdown_template_filename"], ref=ref).decoded_content.decode('utf8')
     @cached_property
     def markdown_template(self):
-        return self.get_markdown_template(self.repo)
+        return self._get_markdown_template(self.repo)
     @cache
-    def markdown_grade(self, commit):
+    def markdown_grade_json(self, commit):
         return junit_to_json(markdown_grade(
             template=self.markdown_template,
-            target=self.get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha)
+            target=self._get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha)
         ))
 
 
@@ -83,23 +88,6 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     def _get_repo_from_commit(self, commit):
         return  self.get_repo(re.match(r'https://api.github.com/repos/(.*)/commits/.+', commit.url).group(1))  # hack to backlink to repos
 
-    @cache_disk(
-        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'),
-        ttl=datetime.timedelta(days=150),
-    )
-    def _get_workflow_artifacts(self, commit):
-        artifact_urls = self.workflow_run_artifacts_url_lookup[commit.sha]
-        if not artifact_urls:
-            raise DoNotPersistCacheException()
-        def get_junit(artifacts_url):
-            try:
-                return GithubArtifactsJUnit(artifacts_url).junit_json
-            except:
-                return None
-        return tuple(filter(None, (
-            get_junit(artifacts_url) for artifacts_url in artifact_urls
-        )))
-
 
     @cache
     def _commits_grouped_by_week(self, repo):
@@ -117,12 +105,14 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     def forks(self):
         return tuple(
             _add_methods(fork, 
-                self._commits_grouped_by_week,
                 self._get_workflow_by_name,
+                self._commits_grouped_by_week,
+                self._tests_grouped_by_week,
             )
             for fork in self.repo.get_forks()
             if fork.pushed_at > self.date_start
         )
+
 
     @cached_property
     @cache_disk(
@@ -141,9 +131,37 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                         runs[run.head_sha].append(run.artifacts_url)
         return dict(runs)  # TODO: harden lists to tuples?
 
-    def grouped_commits_to_test_results(self, commits):
-        # r.get_contents("README.md", ref="f8eca19cce30bade786a4948a2cef1c881873a3d").decoded_content.decode('utf8')
-        pass
+    @cache_disk(
+        args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'),
+        ttl=datetime.timedelta(days=150),
+    )
+    def _get_workflow_artifacts(self, commit):
+        artifact_urls = self.workflow_run_artifacts_url_lookup[commit.sha]
+        if not artifact_urls:
+            raise DoNotPersistCacheException()
+        def get_junit(artifacts_url):
+            try:
+                return GithubArtifactsJUnit(artifacts_url).junit_json
+            except:
+                return None
+        return tuple(filter(None, (
+            get_junit(artifacts_url) for artifacts_url in artifact_urls
+        )))
+
+
+    def _tests_grouped_by_week(self, repo):
+        return harden({
+            week_num: self._tests_from_commits(commits)
+            for week_num, commits in self._commits_grouped_by_week(repo).items()
+        })
+    def _tests_from_commits(self, commits):
+        _return = {}
+        if commits:  # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
+            _return['markdown'] = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
+        for commit in commits:
+            for junit_json in self._get_workflow_artifacts(commit):
+                pass  # TODO: merge json pytest - dedupe with latest only
+        return _return
 
 
     @cached_property
