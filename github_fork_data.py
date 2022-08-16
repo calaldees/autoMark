@@ -12,7 +12,7 @@ from github_artifacts import GithubArtifactsJUnit, junit_to_json
 from markdown_grade import markdown_grade
 
 import github
-#from clint.textui.progress import bar as progress_bar
+from tqdm import tqdm
 
 import logging
 log = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                 self._commits_grouped_by_week,
                 self._tests_grouped_by_week,
             )
-            for fork in self.repo.get_forks()
+            for fork in (self.repo, )  # self.repo.get_forks()  # TEMP: HACK for development
             if fork.pushed_at > self.date_start
         )
 
@@ -99,10 +99,8 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     )
     def workflow_run_artifacts_url_lookup(self):
         log.info("generating workflow_run_artifacts_url_lookup")
-        # TODO: progress bar?
         runs = defaultdict(list)
-        #for repo in progress_bar(self.forks):    # TEMP HACK for development
-        for repo in (self.repo, ):  # TEMP HACK for development
+        for repo in tqdm(self.forks):
             for workflow in repo.get_workflows():
                 if workflow.name in self.settings['workflows']:
                     for run in workflow.get_runs():
@@ -135,18 +133,19 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     def _tests_from_commits(self, commits):
         _return = {}
         if commits:  # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
-            _return['markdown'] = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
+            junit_json = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
+            _return.setdefault(junit_json['@name'], junit_json)
         for commit in commits:
             for junit_json in self._get_workflow_artifacts_junit(commit) or ():
-                breakpoint()
-                pass  # TODO: merge json pytest - dedupe with latest only
+                _return.setdefault(junit_json['@name'], junit_json)
         return _return
 
 
     @cached_property
     def data(self):
         return {
-            "forks": self.forks
+            fork.owner.login: fork._tests_grouped_by_week()
+            for fork in tqdm(self.forks)
         }
 
 

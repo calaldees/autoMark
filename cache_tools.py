@@ -27,7 +27,7 @@ def cache_disk(original_function=None, cache_path=Path('__cache'), ttl=datetime.
             if cache.is_file() and (
                 datetime.datetime.fromtimestamp(cache.stat().st_mtime) > datetime.datetime.now() - ttl
             ):
-                log.info(f'loading from cache {args=} {kwargs=}')
+                log.debug(f'loading from cache {args=} {kwargs=}')
                 return pickle.load(cache.open(mode='rb'))
             if cache_only:
                 log.debug(f'cache_only - refusing to run original function')
@@ -38,7 +38,7 @@ def cache_disk(original_function=None, cache_path=Path('__cache'), ttl=datetime.
             except DoNotPersistCacheException as ex:
                 return
 
-            log.info(f'persisting to cache {args=} {kwargs=}')
+            log.debug(f'persisting to cache {args=} {kwargs=}')
             pickle.dump(_return, cache.open(mode='wb'))
             return _return
         return wrapped_function
