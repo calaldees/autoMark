@@ -97,5 +97,20 @@ def markdown_codeblock_languages(block):
 #    markdown_text_dicts(bb.children)
 #)
 
-def load_markdown_file(filename):
-    return markdown_text_dicts(parse(Path(filename).open('rt').read()).children)
+def load_markdown(data):
+    r"""
+    >>> load_markdown('# Test')
+    {'Test': {'': ''}}
+    >>> from pathlib import Path
+    >>> _ = 'TODO: tempfile for path'
+    >>> import io
+    >>> load_markdown(io.StringIO('# Test'))
+    {'Test': {'': ''}}
+    """
+    if isinstance(data, str) and Path(data).is_file():
+        data = Path(data)
+    if isinstance(data, Path):
+        data = data.open('rt')
+    if hasattr(data, 'read') and callable(data.read):
+        data = data.read()
+    return markdown_text_dicts(parse(data).children)

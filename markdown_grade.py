@@ -3,7 +3,7 @@ from itertools import chain
 import re
 from typing import NamedTuple
 
-from markdown_parse import load_markdown_file
+from markdown_parse import load_markdown
 
 import junitparser  # https://pypi.org/project/junitparser/
 
@@ -160,13 +160,28 @@ def mark_template(template, target):
             for MarkTemplate in _mark_templates
         )
 
-if __name__ == "__main__":
-    template = load_markdown_file('../frameworks_and_languages_module/technical_report.md')
-    target = load_markdown_file('README.md')
 
+# Top Level Exports ------------------------------------------------------------
+
+def markdown_grade(template, target, junit_filename=None):
     suite = junitparser.TestSuite('markdown')
-    suite.add_property('build', '55')
-    suite.add_testcases(mark_template(template, target))
+    #suite.add_property('build', '55')
+    suite.add_testcases(mark_template(
+        template=load_markdown(template),
+        target=load_markdown(target),
+    ))
     xml = junitparser.JUnitXml()
     xml.add_testsuite(suite)
-    xml.write('junit.xml')
+    if junit_filename:
+        xml.write(junit_filename)
+    return xml
+
+
+# Main -------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    markdown_grade(
+        template='../frameworks_and_languages_module/technical_report.md',
+        target='README.md',
+        junit_filename='junit.xml',
+    )

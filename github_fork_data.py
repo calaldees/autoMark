@@ -1,3 +1,4 @@
+import re
 from functools import partial, cache, cached_property
 import datetime
 from pathlib import Path
@@ -6,7 +7,8 @@ from collections import defaultdict
 from types import MappingProxyType
 
 from cache_tools import cache_disk, DoNotPersistCacheException
-from github_artifacts import GithubArtifactsJUnit
+from github_artifacts import GithubArtifactsJUnit, junit_to_json
+from markdown_grade import markdown_grade
 
 #from clint.textui.progress import bar as progress_bar
 
@@ -46,13 +48,24 @@ def harden(data):
     return data
 
 
+class GitHubForkData_MarkdownTemplateMixin():
+    def get_markdown_template(self, repo, ref=None):
+        return repo.get_contents(self.settings["markdown_template_filename"], ref=ref).decoded_content.decode('utf8')
+    @cached_property
+    def markdown_template(self):
+        return self.get_markdown_template(self.repo)
+    @cache
+    def markdown_grade(self, commit):
+        return junit_to_json(markdown_grade(
+            template=self.markdown_template,
+            target=self.get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha)
+        ))
 
 
-
-class GitHubForkData():
+class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     def __init__(self, github, settings):
+        self.github = github
         self.settings = settings
-        self.repo = github.get_repo(self.settings['repo'])
         self.date_start = datetime.datetime.fromisoformat(self.settings['date_start'])
         self.date_end = datetime.datetime.fromisoformat(self.settings['date_end'])
         self.timedelta = datetime.timedelta(days=int(self.settings['timedelta_days']))
@@ -60,6 +73,15 @@ class GitHubForkData():
     @staticmethod
     def _get_workflow_by_name(repo, name):
         return next((w for w in repo.get_workflows() if w.name == name), None)
+
+    @property
+    def repo(self):
+        return self.get_repo(self.settings['repo'])
+    @cache
+    def get_repo(self, name):
+        return self.github.get_repo(name)
+    def _get_repo_from_commit(self, commit):
+        return  self.get_repo(re.match(r'https://api.github.com/repos/(.*)/commits/.+', commit.url).group(1))  # hack to backlink to repos
 
     @cache_disk(
         args_to_bytes_func=lambda self, commit: commit.sha.encode('utf8'),
@@ -78,6 +100,7 @@ class GitHubForkData():
             get_junit(artifacts_url) for artifacts_url in artifact_urls
         )))
 
+
     @cache
     def _commits_grouped_by_week(self, repo):
         commits = defaultdict(list)
@@ -86,6 +109,7 @@ class GitHubForkData():
         for commit in repo.get_commits(since=self.date_start, author=repo.owner):
             commits[_commit_week_number(commit)].append(_add_methods(commit,
                 self._get_workflow_artifacts,
+                self._get_repo_from_commit,
             ))
         return harden(commits)
 
@@ -115,9 +139,11 @@ class GitHubForkData():
                 if workflow.name in self.settings['workflows']:
                     for run in workflow.get_runs():
                         runs[run.head_sha].append(run.artifacts_url)
-        return runs  # TODO: harden?
+        return dict(runs)  # TODO: harden lists to tuples?
 
-
+    def grouped_commits_to_test_results(self, commits):
+        # r.get_contents("README.md", ref="f8eca19cce30bade786a4948a2cef1c881873a3d").decoded_content.decode('utf8')
+        pass
 
 
     @cached_property
@@ -145,6 +171,7 @@ if __name__ == "__main__":
     gg = GitHubForkData(g, settings)
     runs = gg.workflow_run_artifacts_url_lookup
     cc = gg._commits_grouped_by_week(gg.repo)
+    ccc = cc[30][0]
     art = cc[81][2]._get_workflow_artifacts()
     #cc = gg.forks[0]._commits_per_week()
     # cc[81][8]

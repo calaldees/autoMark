@@ -6,6 +6,11 @@ import re
 from os import environ
 
 import requests
+import xmljson
+
+def junit_to_json(elementTree):
+    data = xmljson.BadgerFish().data(elementTree.getroot())
+    return data['testsuites']['testsuite']
 
 
 GITHUB_API_HEADERS = {
@@ -47,9 +52,8 @@ class GithubArtifactsJUnit(GithubArtifacts):
         return JUnitXml.fromroot(self.junit_ElementTree.getroot())
     @property
     def junit_json(self):
-        import xmljson
-        data = xmljson.BadgerFish().data(self.junit_ElementTree.getroot())
-        return data['testsuites']['testsuite']
+        return junit_to_json(self.junit_ElementTree)
+
     #@property
     #def report_json(self):
     #    # https://pypi.org/project/pytest-json-report/
