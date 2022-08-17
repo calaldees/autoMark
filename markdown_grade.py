@@ -163,9 +163,10 @@ def mark_template(template, target):
 
 # Top Level Exports ------------------------------------------------------------
 
-def markdown_grade(template, target, junit_filename=None):
+def markdown_grade(template, target, junit_filename=None, **kwargs):
     suite = junitparser.TestSuite('markdown')
-    #suite.add_property('build', '55')
+    for k, v in kwargs.items():
+        suite.add_property(k, v)
     suite.add_testcases(mark_template(
         template=load_markdown(template),
         target=load_markdown(target),

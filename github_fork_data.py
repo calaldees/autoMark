@@ -9,7 +9,7 @@ from collections import defaultdict
 from _utils import harden, _add_methods, JSONObjectEncoder
 from cache_tools import cache_disk, DoNotPersistCacheException
 from github_artifacts import GithubArtifactsJUnit, junit_to_json
-from markdown_grade import markdown_grade
+from markdown_grade import markdown_grade, load_markdown
 
 import github
 from tqdm import tqdm
@@ -31,6 +31,8 @@ class GitHubForkData_MarkdownTemplateMixin():
             return repo.get_contents(self.settings["markdown_template_filename"], ref=ref).decoded_content.decode('utf8')
         except github.GithubException:
             return ''
+    def _get_markdown_json(self, repo):
+        return load_markdown(self._get_markdown_template(repo))
     @cached_property
     def markdown_template(self):
         return self._get_markdown_template(self.repo)
@@ -41,8 +43,11 @@ class GitHubForkData_MarkdownTemplateMixin():
     def markdown_grade_json(self, commit):
         return junit_to_json(markdown_grade(
             template=self.markdown_template,
-            target=self._get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha)
+            target=self._get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha),
+            url=self.markdown_html_url(commit),
         ))
+    def markdown_html_url(self, commit):
+        return f'https://github.com/{commit._get_repo_from_commit().full_name}/tree/{commit.sha}/{self.settings["markdown_template_filename"]}'  # Fragile and perilous!
 
 
 class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
@@ -86,6 +91,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                 self._get_workflow_by_name,
                 self._commits_grouped_by_week,
                 self._tests_grouped_by_week,
+                self._get_markdown_json,  # Coupling overlap with Mixin?
             )
             for fork in (self.repo, )  # self.repo.get_forks()  # TEMP: HACK for development
             if fork.pushed_at > self.date_start
@@ -117,7 +123,9 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             raise DoNotPersistCacheException()
         def get_junit(artifacts_url):
             try:
-                return GithubArtifactsJUnit(artifacts_url).junit_json
+                junit_json = GithubArtifactsJUnit(artifacts_url).junit_json
+                # TODO: overlay url property?
+                return junit_json
             except:
                 return None
         return tuple(filter(None, (
@@ -142,9 +150,16 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
 
 
     @cached_property
-    def data(self):
+    def fork_test_data(self):
         return {
             fork.owner.login: fork._tests_grouped_by_week()
+            for fork in tqdm(self.forks)
+        }
+
+    @cached_property
+    def fork_markdown_templates(self):
+        return {
+            fork.owner.login: fork._get_markdown_json()
             for fork in tqdm(self.forks)
         }
 
@@ -168,9 +183,15 @@ if __name__ == "__main__":
     #cc = gg._commits_grouped_by_week(gg.repo)
     #ccc = cc[30][0]
     #art = cc[81][2]._get_workflow_artifacts_junit()
-    #cc = gg.forks[0]._commits_per_week()
-    # cc[81][8]
-    #tt = gg._tests_grouped_by_week(gg.repo)    
+    #cc = gg.forks[0]._commits_grouped_by_week()
+    #ccc = cc[81][8]
+    #tt = gg._tests_grouped_by_week(gg.repo)
     #pp(gg.data)
-    with open('data.json', 'w') as filehandle:
-        json.dump(gg.data, filehandle, cls=JSONObjectEncoder)
+
+    #breakpoint()
+
+    #with open('data.json', 'w') as filehandle:
+    #    json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
+
+    with open('markdown_templates.json', 'w') as filehandle:
+        json.dump(gg.fork_markdown_templates, filehandle, cls=JSONObjectEncoder)

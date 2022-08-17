@@ -135,7 +135,7 @@ function generate_element_user(data) {
                 p.textContent = testcase['@name']
 
                 function testResult(testcase) {
-                    for (let state of ['error', 'failed', 'skipper']) {
+                    for (let state of ['error', 'failed', 'skipped']) {
                         if (state in testcase) {return state}
                     }
                     return 'passed'
@@ -151,11 +151,11 @@ function generate_element_user(data) {
 function render(data) {
     window.data = data
     mainElement.innerHTML = ''
-    const hash = window.location.hash.replace('#','') //.split(',').filter((i)=>typeof(i)==="string" && i.length);
+    const hash = window.location.hash.replace('#','')
     if (hash) {
-        mainElement.appendChild(generate_element_user(data[hash]));
+        mainElement.appendChild(generate_element_user(data[hash]))
     } else {
-        mainElement.appendChild(generate_element_table(data));
+        mainElement.appendChild(generate_element_table(data))
     }
 }
 
