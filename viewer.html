@@ -79,12 +79,17 @@ function generate_element_table(data) {
             week = week_data[week]
             if (!week) {continue}
 
-            for (let [k,v] of Object.entries(week)) {
+            for (let test of tests) {
                 const p = document.createElement('p')
                 table_cell.append(p)
-                const num_tests = v['@tests'] - v['@skipped']
-                const num_pass = num_tests - v['@failures'] - v['@errors']
-                p.textContent = `${k.slice(0,2)}: ${num_pass}/${num_tests}`
+                p.textContent = test.slice(0,2)
+
+                const t = week[test]
+                if (!t) {continue}
+
+                const num_tests = t['@tests'] - t['@skipped']
+                const num_pass = num_tests - t['@failures'] - t['@errors']
+                p.textContent = `${p.textContent}: ${num_pass}/${num_tests}`
             }
         }
     }
@@ -109,14 +114,18 @@ function generate_element_user(data) {
 
         week = data[week]
         for (let test of tests) {
-            const td = document.createElement('td')
-            table_row.appendChild(td)
+            const table_cell = document.createElement('td')
+            table_row.appendChild(table_cell)
 
             if (!week) {continue}
-            test = week[test]
-            if (!test) {continue}
+            const t = week[test]
+            if (!t) {continue}
 
-            // TODO
+            for (let testcase of t.testcase) {
+                const p = document.createElement('p')
+                table_cell.append(p)
+                p.textContent = testcase['@name']
+            }
         }
     }
 
