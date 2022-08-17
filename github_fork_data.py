@@ -1,7 +1,9 @@
 import re
+import json
 from functools import cache, cached_property
 import datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import NamedTuple
 from collections import defaultdict
 
@@ -149,19 +151,38 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         }
 
 
+class JSONObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        """
+        Used with json lib to serialize json output
+        e.g
+        text = json.dumps(result, cls=JSONObjectEncoder)
+        """
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        if isinstance(obj, datetime.timedelta):
+            return obj.total_seconds()
+        if isinstance(obj, set):
+            return tuple(obj)
+        if isinstance(obj, MappingProxyType):
+            return dict(obj)
+        # Let the base class default method raise the TypeError
+        return super().default(obj)
+
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
+    from os import environ
+    g = github.Github(environ['GITHUB_TOKEN'])
+
     from pprint import pprint as pp
-    import json
 
     datafile = Path('frameworks_and_languages.json')
     with datafile.open('rt') as filehandle:
         settings = json.load(filehandle)
 
-    from os import environ
-    g = github.Github(environ['GITHUB_TOKEN'])
 
     gg = GitHubForkData(g, settings)
     #runs = gg.workflow_run_artifacts_url_lookup
@@ -170,11 +191,7 @@ if __name__ == "__main__":
     #art = cc[81][2]._get_workflow_artifacts_junit()
     #cc = gg.forks[0]._commits_per_week()
     # cc[81][8]
-    tt = gg._tests_grouped_by_week(gg.repo)
-    
-    breakpoint()
-
-    
-    pp(
-        gg.data
-    )
+    #tt = gg._tests_grouped_by_week(gg.repo)    
+    #pp(gg.data)
+    with open('data.json', 'w') as filehandle:
+        json.dump(gg.data, filehandle, cls=JSONObjectEncoder)
