@@ -4,6 +4,10 @@
     <link id="favicon" rel="shortcut icon" type="image/png" href="data:image/png;base64,....==" />
     <title>viewer</title>
     <style>
+        p {
+            margin:0;
+            padding:0;
+        }
         table {
             border-spacing: 0;
             border-collapse: collapse;
@@ -67,7 +71,14 @@ function render(data) {
 
             week = week_data[week]
             if (!week) {continue}
-            //table_cell.append();
+            for (let [k,v] of Object.entries(week)) {
+                const p = document.createElement('p')
+                table_cell.append(p)
+                const num_tests = v['@tests'] - v['@skipped']
+                const num_pass = num_tests - v['@failures'] - v['@errors']
+                p.textContent = `${k.slice(0,2)}: ${num_pass}/${num_tests}`
+            }
+            
         }
     }
 
