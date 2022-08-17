@@ -3,12 +3,10 @@ import json
 from functools import cache, cached_property
 import datetime
 from pathlib import Path
-from types import MappingProxyType
-from typing import NamedTuple
 from collections import defaultdict
 
 
-from _utils import harden, _add_methods
+from _utils import harden, _add_methods, JSONObjectEncoder
 from cache_tools import cache_disk, DoNotPersistCacheException
 from github_artifacts import GithubArtifactsJUnit, junit_to_json
 from markdown_grade import markdown_grade
@@ -149,25 +147,6 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             fork.owner.login: fork._tests_grouped_by_week()
             for fork in tqdm(self.forks)
         }
-
-
-class JSONObjectEncoder(json.JSONEncoder):
-    def default(self, obj):
-        """
-        Used with json lib to serialize json output
-        e.g
-        text = json.dumps(result, cls=JSONObjectEncoder)
-        """
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        if isinstance(obj, datetime.timedelta):
-            return obj.total_seconds()
-        if isinstance(obj, set):
-            return tuple(obj)
-        if isinstance(obj, MappingProxyType):
-            return dict(obj)
-        # Let the base class default method raise the TypeError
-        return super().default(obj)
 
 
 

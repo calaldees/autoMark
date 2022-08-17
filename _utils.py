@@ -1,5 +1,9 @@
+import json
 from functools import partial
 from types import MappingProxyType
+from typing import Mapping, Iterable
+import datetime
+
 
 def addClass(obj, cls):
     # https://stackoverflow.com/a/11050571/3356840
@@ -12,7 +16,7 @@ def _add_methods(obj, *methods):
     return obj
 
 
-from typing import Mapping, Iterable
+
 def harden(data):
     """
     >>> harden({"a": [1,2,3]})
@@ -29,3 +33,22 @@ def harden(data):
     if isinstance(data, Iterable) and not isinstance(data, str):
         return tuple((harden(i) for i in data))
     return data
+
+
+class JSONObjectEncoder(json.JSONEncoder):
+    def default(self, obj):
+        """
+        Used with json lib to serialize json output
+        e.g
+        text = json.dumps(result, cls=JSONObjectEncoder)
+        """
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        if isinstance(obj, datetime.timedelta):
+            return obj.total_seconds()
+        if isinstance(obj, set):
+            return tuple(obj)
+        if isinstance(obj, MappingProxyType):
+            return dict(obj)
+        # Let the base class default method raise the TypeError
+        return super().default(obj)
