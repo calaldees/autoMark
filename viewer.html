@@ -35,29 +35,31 @@ window.onhashchange = function() {
 
 function get_weeks(data) {
     if (!data) {data = _data}
-    return Array.from(new Set(Object.values(data).map(d=>Object.keys(d)).flat())).sort()
+    return Array.from(new Set(Object.values(data).map(Object.keys).flat())).sort()
 }
 function get_tests(data) {
     if (!data) {data = _data}
-    console.error('TODO')
-    return []
+    return Array.from(new Set(Object.values(data).flatMap(Object.values).flatMap(Object.keys))).sort()
 }
+
+function generate_thead() {
+    const table_headings = document.createElement('thead')
+    for (let heading of Array.from(arguments).flat()) {
+        const table_heading = document.createElement('th')
+        table_headings.appendChild(table_heading)
+        table_heading.textContent = heading
+    }
+    return table_headings
+}
+
 
 function generate_element_table(data) {
     const table = document.createElement('table')
 
-    const weeks = get_weeks()
+    const weeks = get_weeks(data)
+    const tests = get_tests(data)
 
-    function addHeadings() {
-        const table_headings = document.createElement('thead')
-        table.appendChild(table_headings)
-        for (let heading of Array.from(arguments).flat()) {
-            const table_heading = document.createElement('th')
-            table_headings.appendChild(table_heading)
-            table_heading.textContent = heading
-        }
-    }
-    addHeadings('username', weeks)
+    table.appendChild(generate_thead('username', weeks))
 
     for (let [username, week_data] of Object.entries(data)) {
         const table_row = document.createElement('tr')
@@ -76,6 +78,7 @@ function generate_element_table(data) {
 
             week = week_data[week]
             if (!week) {continue}
+
             for (let [k,v] of Object.entries(week)) {
                 const p = document.createElement('p')
                 table_cell.append(p)
@@ -90,10 +93,38 @@ function generate_element_table(data) {
 
 function generate_element_user(data) {
     const table = document.createElement('table')
+
+    const weeks =  get_weeks().reverse()
+    const tests = get_tests()
+
+    table.appendChild(generate_thead('week', tests))
+
+    for (let week of weeks) {
+        const table_row = document.createElement('tr')
+        table.appendChild(table_row);
+
+        const table_row_name = document.createElement('td')
+        table_row.appendChild(table_row_name)
+        table_row_name.textContent = week
+
+        week = data[week]
+        for (let test of tests) {
+            const td = document.createElement('td')
+            table_row.appendChild(td)
+
+            if (!week) {continue}
+            test = week[test]
+            if (!test) {continue}
+
+            // TODO
+        }
+    }
+
     return table
 }
 
 function render(data) {
+    window.data = data
     mainElement.innerHTML = ''
     const hash = window.location.hash.replace('#','') //.split(',').filter((i)=>typeof(i)==="string" && i.length);
     if (hash) {
