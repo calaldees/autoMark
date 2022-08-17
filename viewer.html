@@ -33,18 +33,20 @@ window.onhashchange = function() {
     render(_data)
 }
 
-function render(data) {
-    //const languages = window.location.hash.replace('#','').split(',').filter((i)=>typeof(i)==="string" && i.length);
+function get_weeks(data) {
+    if (!data) {data = _data}
+    return Array.from(new Set(Object.values(data).map(d=>Object.keys(d)).flat())).sort()
+}
+function get_tests(data) {
+    if (!data) {data = _data}
+    console.error('TODO')
+    return []
+}
 
-    // Clear existing html
-    mainElement.innerHTML = ''
-
-
-    // Build Table
+function generate_element_table(data) {
     const table = document.createElement('table')
-    mainElement.appendChild(table);
 
-    const weeks = Array.from(new Set(Object.values(data).map(d=>Object.keys(d)).flat())).sort()
+    const weeks = get_weeks()
 
     function addHeadings() {
         const table_headings = document.createElement('thead')
@@ -63,7 +65,10 @@ function render(data) {
 
         const table_row_name = document.createElement('td')
         table_row.appendChild(table_row_name)
-        table_row_name.textContent = username
+        const username_link = document.createElement('a')
+        table_row_name.appendChild(username_link)
+        username_link.textContent = username
+        username_link.href = `#${username}`
 
         for (let week of weeks) {
             const table_cell = document.createElement('td')
@@ -78,10 +83,24 @@ function render(data) {
                 const num_pass = num_tests - v['@failures'] - v['@errors']
                 p.textContent = `${k.slice(0,2)}: ${num_pass}/${num_tests}`
             }
-            
         }
     }
+    return table
+}
 
+function generate_element_user(data) {
+    const table = document.createElement('table')
+    return table
+}
+
+function render(data) {
+    mainElement.innerHTML = ''
+    const hash = window.location.hash.replace('#','') //.split(',').filter((i)=>typeof(i)==="string" && i.length);
+    if (hash) {
+        mainElement.appendChild(generate_element_user(data[hash]));
+    } else {
+        mainElement.appendChild(generate_element_table(data));
+    }
 }
 
 
