@@ -38,35 +38,39 @@ function render(data) {
 
     // Build Table
     const table = document.createElement('table')
+    mainElement.appendChild(table);
 
-    const headings = [1,2,3,4,5]
+    const weeks = Array.from(new Set(Object.values(data).map(d=>Object.keys(d)).flat())).sort()
 
-    const table_headings = document.createElement('thead')
-    table_headings.appendChild(document.createElement('th'))  // space for username
-    for (let heading of headings) {
-        const table_heading = document.createElement('th')
-        table_heading.textContent = heading
-        table_headings.appendChild(table_heading)
+    function addHeadings() {
+        const table_headings = document.createElement('thead')
+        table.appendChild(table_headings)
+        for (let heading of Array.from(arguments).flat()) {
+            const table_heading = document.createElement('th')
+            table_headings.appendChild(table_heading)
+            table_heading.textContent = heading
+        }
     }
-    table.appendChild(table_headings)
+    addHeadings('username', weeks)
 
     for (let [username, week_data] of Object.entries(data)) {
         const table_row = document.createElement('tr')
+        table.appendChild(table_row);
 
         const table_row_name = document.createElement('td')
-        table_row_name.textContent = username
         table_row.appendChild(table_row_name)
+        table_row_name.textContent = username
 
-        for (let heading of headings) {
-            const week = week_data[heading]
-            const table_cell = document.createElement('td');
+        for (let week of weeks) {
+            const table_cell = document.createElement('td')
+            table_row.appendChild(table_cell)
+
+            week = week_data[week]
+            if (!week) {continue}
             //table_cell.append();
-            table_row.appendChild(table_cell);
         }
-        table.appendChild(table_row);
     }
 
-    mainElement.appendChild(table);
 }
 
 
