@@ -4,6 +4,9 @@
     <link id="favicon" rel="shortcut icon" type="image/png" href="data:image/png;base64,....==" />
     <title>viewer</title>
     <style>
+        html {
+            font-family: sans-serif;
+        }
         p {
             margin:0;
             padding:0;
@@ -20,6 +23,10 @@
             border-width:0 1px 1px 0 !important;
             vertical-align: top;
         }
+        .passed::before {content: '✅';}
+        .error::before {content: '❌';}
+        .failed::before {content: '❌';}
+        .skipped::before {content: '➖';}
     </style>
 </head>
 <body>
@@ -41,6 +48,7 @@ function get_tests(data) {
     if (!data) {data = _data}
     return Array.from(new Set(Object.values(data).flatMap(Object.values).flatMap(Object.keys))).sort()
 }
+
 
 function generate_thead() {
     const table_headings = document.createElement('thead')
@@ -82,14 +90,14 @@ function generate_element_table(data) {
             for (let test of tests) {
                 const p = document.createElement('p')
                 table_cell.append(p)
-                p.textContent = test.slice(0,2)
+                p.textContent = `${test.slice(0,1)}:`
 
                 const t = week[test]
                 if (!t) {continue}
 
                 const num_tests = t['@tests'] - t['@skipped']
                 const num_pass = num_tests - t['@failures'] - t['@errors']
-                p.textContent = `${p.textContent}: ${num_pass}/${num_tests}`
+                p.textContent = `${p.textContent} ${num_pass}/${num_tests}`
             }
         }
     }
@@ -125,6 +133,14 @@ function generate_element_user(data) {
                 const p = document.createElement('p')
                 table_cell.append(p)
                 p.textContent = testcase['@name']
+
+                function testResult(testcase) {
+                    for (let state of ['error', 'failed', 'skipper']) {
+                        if (state in testcase) {return state}
+                    }
+                    return 'passed'
+                }
+                p.classList.add(testResult(testcase))
             }
         }
     }
