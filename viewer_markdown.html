@@ -71,22 +71,28 @@ window.onhashchange = function() {
 }
 
 
-function generate_headings(markdown_template) {
+function generate_headings(data) {
+    const markdown_template = data['']
     const c = document.createElement('div')
 
-    function appendChildHeadings(data, headings=[]) {
-        for (let [heading_name, content] of Object.entries(data)) {
+    function appendChildHeadings(_data, headings=[]) {
+        for (let [heading_name, content] of Object.entries(_data).filter(([k,v])=>k)) {
             const heading_link = document.createElement('a')
             c.appendChild(heading_link)
             const heading_element = document.createElement(`h${headings.length+1}`)
             heading_link.appendChild(heading_element)
 
-            heading_link.href = `#${headings.concat([heading_name,]).map(_normalise_heading).join(',')}`
-            heading_element.textContent = heading_name
-            // TODO: consider appending number of headings this headings matches in the dataset? e.g. how many people have content
+            const headings_current = headings.concat([heading_name,])
+
+            heading_link.href = `#${headings_current.map(_normalise_heading).join(',')}`
+            
+
+            const heading_count = Object.entries(data).map(([k,v]) => [k,get_text_at_headings(v, headings_current)]).filter(([k,v])=>k).filter(([k,v])=>v).length
+
+            heading_element.textContent = `${heading_name}: ${heading_count}`
 
             if (content instanceof Object) {
-                appendChildHeadings(content, headings.concat([heading_name,]))
+                appendChildHeadings(content, headings_current)
             }
         }
     }
@@ -140,7 +146,7 @@ function render(data) {
     if (headings.length) {
         mainElement.appendChild(generate_content_for_heading(data, headings))
     } else {
-        mainElement.appendChild(generate_headings(data['']))
+        mainElement.appendChild(generate_headings(data))
     }
 }
 
