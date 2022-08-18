@@ -67,7 +67,7 @@ window.onhashchange = function() {
 }
 
 
-function generate_element_table(data) {
+function generate_headings(markdown_template) {
     const c = document.createElement('div')
 
     function appendChildHeadings(data, headings=[]) {
@@ -78,14 +78,15 @@ function generate_element_table(data) {
             heading_link.appendChild(heading_element)
 
             heading_link.href = `#${headings.concat([heading_name,]).map(_normalise_heading).join(',')}`
-
             heading_element.textContent = heading_name
+            // TODO: consider appending number of headings this headings matches in the dataset? e.g. how many people have content
+
             if (content instanceof Object) {
                 appendChildHeadings(content, headings.concat([heading_name,]))
             }
         }
     }
-    appendChildHeadings(data[''])
+    appendChildHeadings(markdown_template)
 
     return c
 }
@@ -94,12 +95,11 @@ function generate_element_table(data) {
 function render(data) {
     window.data = data
     mainElement.innerHTML = ''
-    const headings = window.location.hash.replace('#','').split(',').filter((i)=>typeof(i)==="string" && i.length);
+    const headings = decodeURI(window.location.hash.replace('#','')).split(',').filter((i)=>typeof(i)==="string" && i.length);
     if (headings.length) {
-        //mainElement.appendChild(generate_element_user(data[hash]))
-        console.log('TODO')
+        console.log('TODO', headings)
     } else {
-        mainElement.appendChild(generate_element_table(data))
+        mainElement.appendChild(generate_headings(data['']))
     }
 }
 
