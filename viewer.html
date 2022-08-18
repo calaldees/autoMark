@@ -23,6 +23,9 @@
             border-width:0 1px 1px 0 !important;
             vertical-align: top;
         }
+        td:nth-child(n+2) a {
+            all: unset;
+        }
         .passed::before {content: '✅';}
         .error::before {content: '❌';}
         .failed::before {content: '❌';}
@@ -44,11 +47,20 @@ function get_weeks(data) {
     if (!data) {data = _data}
     return Array.from(new Set(Object.values(data).map(Object.keys).flat())).sort()
 }
-function get_tests(data) {
+function get_testsuite_names(data) {
     if (!data) {data = _data}
     return Array.from(new Set(Object.values(data).flatMap(Object.values).flatMap(Object.keys))).sort()
 }
 
+function get_junit_property(testsuite, name, fallback='') {
+    if (!testsuite.properties.property) {return fallback}
+    let properties = testsuite.properties.property
+    if (!Array.isArray(properties)) {properties = [properties,]}
+    for (let item of properties) {
+        if (item['@name'] == name) {return item['@value']}
+    }
+    return fallback
+}
 
 function generate_thead() {
     const table_headings = document.createElement('thead')
@@ -65,7 +77,7 @@ function generate_element_table(data) {
     const table = document.createElement('table')
 
     const weeks = get_weeks(data)
-    const tests = get_tests(data)
+    const testsuite_names = get_testsuite_names(data)
 
     table.appendChild(generate_thead('username', weeks))
 
@@ -87,16 +99,16 @@ function generate_element_table(data) {
             week = week_data[week]
             if (!week) {continue}
 
-            for (let test of tests) {
+            for (let testsuite_name of testsuite_names) {
                 const p = document.createElement('p')
                 table_cell.append(p)
-                p.textContent = `${test.slice(0,1)}:`
+                p.textContent = `${testsuite_name.slice(0,1)}:`
 
-                const t = week[test]
-                if (!t) {continue}
+                const testsuite = week[testsuite_name]
+                if (!testsuite) {continue}
 
-                const num_tests = t['@tests'] - t['@skipped']
-                const num_pass = num_tests - t['@failures'] - t['@errors']
+                const num_tests = testsuite['@tests'] - testsuite['@skipped']
+                const num_pass = num_tests - testsuite['@failures'] - testsuite['@errors']
                 p.textContent = `${p.textContent} ${num_pass}/${num_tests}`
             }
         }
@@ -108,9 +120,9 @@ function generate_element_user(data) {
     const table = document.createElement('table')
 
     const weeks =  get_weeks().reverse()
-    const tests = get_tests()
+    const testsuite_names = get_testsuite_names()
 
-    table.appendChild(generate_thead('week', tests))
+    table.appendChild(generate_thead('week', testsuite_names))
 
     for (let week of weeks) {
         const table_row = document.createElement('tr')
@@ -121,15 +133,23 @@ function generate_element_user(data) {
         table_row_name.textContent = week
 
         week = data[week]
-        for (let test of tests) {
-            const table_cell = document.createElement('td')
+        for (let testsuite_name of testsuite_names) {
+            let table_cell = document.createElement('td')
             table_row.appendChild(table_cell)
 
             if (!week) {continue}
-            const t = week[test]
-            if (!t) {continue}
+            const testsuite = week[testsuite_name]
+            if (!testsuite) {continue}
 
-            for (let testcase of t.testcase) {
+            const url = get_junit_property(testsuite, 'url')
+            if (url) {
+                const table_cell_link = document.createElement('a')
+                table_cell.append(table_cell_link)
+                table_cell_link.href = url
+                table_cell = table_cell_link
+            }
+
+            for (let testcase of testsuite.testcase) {
                 const p = document.createElement('p')
                 table_cell.append(p)
                 p.textContent = testcase['@name']
