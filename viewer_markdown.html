@@ -85,9 +85,8 @@ function generate_headings(data) {
             const headings_current = headings.concat([heading_name,])
 
             heading_link.href = `#${headings_current.map(_normalise_heading).join(',')}`
-            
 
-            const heading_count = Object.entries(data).map(([k,v]) => [k,get_text_at_headings(v, headings_current)]).filter(([k,v])=>k).filter(([k,v])=>v).length
+            const heading_count = Object.entries(data).filter(([k,v])=>k).map(([k,v]) => [k,get_text_at_headings(v, headings_current)]).filter(([k,v])=>v!=get_text_at_headings(markdown_template, headings_current)).length
 
             heading_element.textContent = `${heading_name}: ${heading_count}`
 
