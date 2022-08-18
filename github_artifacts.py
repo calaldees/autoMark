@@ -24,8 +24,8 @@ GITHUB_API_HEADERS = {
 
 class GithubArtifacts():
     def __init__(self, url):
-        assert re.match(r'.*api.github.*actions/runs.*/artifacts', url)
         self.url = url
+        self.repo = re.match(r'.*api.github.*/repos/(?P<repo>.*)/actions/runs.*/artifacts', url).group(1)  # I hate this acquisition via regex
     @cached_property
     def data(self):
         return requests.get(self.url, headers=GITHUB_API_HEADERS).json()
@@ -39,6 +39,10 @@ class GithubArtifacts():
     def zipfile(self):
         assert self.data["total_count"] == 1
         return self.get_zipfile(next(iter(self.artifact_urls.keys())))
+    @property
+    def html_url_run(self):
+        workflow_id = next(a['workflow_run']['id'] for a in self.data["artifacts"])
+        return f'https://github.com/{self.repo}/actions/runs/{workflow_id}'  # I hate constructing this url manually
 
 
 class GithubArtifactsJUnit(GithubArtifacts):
@@ -50,6 +54,8 @@ class GithubArtifactsJUnit(GithubArtifacts):
     def junit_ElementTree(self):
         from xml.etree import ElementTree
         return ElementTree.parse(self.zipfile.open("junit.xml"))
+        # TODO:
+        # Maybe add/augment to the suite ElementTree 'properties','property', url:html_url_run
     @property
     def JUnitXml(self):
         from junitparser import JUnitXml

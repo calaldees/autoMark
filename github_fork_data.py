@@ -44,7 +44,7 @@ class GitHubForkData_MarkdownTemplateMixin():
         return junit_to_json(markdown_grade(
             template=self.markdown_template,
             target=self._get_markdown_template(repo=commit._get_repo_from_commit(), ref=commit.sha),
-            url=self.markdown_html_url(commit),
+            url=self.markdown_html_url(commit),  # this adds a url 'property' to the testsuite
         ))
     def markdown_html_url(self, commit):
         return f'https://github.com/{commit._get_repo_from_commit().full_name}/tree/{commit.sha}/{self.settings["markdown_template_filename"]}'  # Fragile and perilous!
@@ -123,8 +123,11 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             raise DoNotPersistCacheException()
         def get_junit(artifacts_url):
             try:
-                junit_json = GithubArtifactsJUnit(artifacts_url).junit_json
-                # TODO: overlay url property?
+                github_artifact = GithubArtifactsJUnit(artifacts_url)
+                junit_json = github_artifact.junit_json
+                # HACK
+                # Overlay url property - post xml - because the XML was generated on CI without knowledge of it's context/where it was run. TODO: Add this to GithubArtifactsJUnit and remove this json nonsense/hack
+                junit_json.setdefault('properties',{}).setdefault('property',[]).append({"@name": "url", "@value": github_artifact.html_url_run})
                 return junit_json
             except:
                 return None
@@ -140,7 +143,8 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
         })
     def _tests_from_commits(self, commits):
         _return = {}
-        if commits:  # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
+        if commits:  # HACK: Generate the JUnitXml for markdown manually here in python
+            # HACK - this is mad coupling with the MarkdownMixin, in future markdown marking will be done as a github action and export junit.xml file
             junit_json = self.markdown_grade_json(commits[0])  # commits are in 'latest first' order
             _return.setdefault(junit_json['@name'], junit_json)
         for commit in commits:
@@ -190,8 +194,8 @@ if __name__ == "__main__":
 
     #breakpoint()
 
-    #with open('data.json', 'w') as filehandle:
-    #    json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
+    with open('data.json', 'w') as filehandle:
+        json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
 
     with open('markdown_templates.json', 'w') as filehandle:
         json.dump(gg.fork_markdown_templates, filehandle, cls=JSONObjectEncoder)
