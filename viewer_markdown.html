@@ -29,6 +29,36 @@
 <div id="main"></div>
 <script type="module">
 
+
+function _normalise_heading(heading) {
+    const REGEX_NUMBER_IN_BRACKETS = new RegExp('\\(.*(\\d+).*\\)');
+    try {
+        return Math.floor(heading.match(REGEX_NUMBER_IN_BRACKETS)[1])
+    } catch(e) {}
+    return heading
+}
+console.assert(_normalise_heading('heading') == 'heading', 'should be heading')
+console.assert(_normalise_heading('(heading 3 - I think)') == 3, 'should be 3')
+
+function get_text_at_headings(data, headings) {
+    for (let heading of headings.map(_normalise_heading)) {
+        const _heading_by_index = [...Object.keys(data)][heading]
+        if (_heading_by_index) {
+            heading = _heading_by_index
+        }
+        if (heading in data) {
+            data = data[heading]
+        }
+    }
+    return data['']
+}
+const _TEST_DATA = {'Heading1': {'': 'some text', 'Heading2 (heading order 1)': {'': 'Some more text', 'Heading3.a': {'': ''}}, 'Heading2 (heading order 2)': {'': 'final'} }}
+console.assert(get_text_at_headings(_TEST_DATA, ['Heading1',]) == 'some text', 'Heading1')
+console.assert(get_text_at_headings(_TEST_DATA, ['Heading1', 2]) == 'final', 'Heading1 2')
+console.assert(get_text_at_headings(_TEST_DATA, ['Some nonsense', 'more nonsense']) == undefined, 'Nonsense')
+
+
+
 const mainElement = document.getElementById('main') || document.getElementsByTagName('body').item(0)
 
 let _data;
@@ -38,17 +68,34 @@ window.onhashchange = function() {
 
 
 function generate_element_table(data) {
-    const table = document.createElement('table')
+    const c = document.createElement('div')
 
-    return table
+    function appendChildHeadings(data, headings=[]) {
+        for (let [heading_name, content] of Object.entries(data)) {
+            const heading_link = document.createElement('a')
+            c.appendChild(heading_link)
+            const heading_element = document.createElement(`h${headings.length+1}`)
+            heading_link.appendChild(heading_element)
+
+            heading_link.href = `#${headings.concat([heading_name,]).map(_normalise_heading).join(',')}`
+
+            heading_element.textContent = heading_name
+            if (content instanceof Object) {
+                appendChildHeadings(content, headings.concat([heading_name,]))
+            }
+        }
+    }
+    appendChildHeadings(data[''])
+
+    return c
 }
 
 
 function render(data) {
     window.data = data
     mainElement.innerHTML = ''
-    const hash = window.location.hash.replace('#','')
-    if (hash) {
+    const headings = window.location.hash.replace('#','').split(',').filter((i)=>typeof(i)==="string" && i.length);
+    if (headings.length) {
         //mainElement.appendChild(generate_element_user(data[hash]))
         console.log('TODO')
     } else {

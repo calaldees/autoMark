@@ -24,6 +24,10 @@ Some code
 function test() {return "yes"}
 ```
 
+code2
+-----
+some code again
+
 Test2
 =====
 Another test.
@@ -50,7 +54,7 @@ def _block_code_summary(block):
 def markdown_text_dicts(blocks):
     r'''
     >>> markdown_text_dicts(parse(md_test).children)
-    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\n a link\nEnd of test', 'code': {'': 'Some code\nFencedCode:javascript:1'}}, 'Test2': {'': 'Another test.'}}
+    {'': 'before', 'Test1': {'': 'This is a test.\nthing1\nthing1.5\nthing2\n a link\nEnd of test', 'code': {'': 'Some code\nFencedCode:javascript:1'}, 'code2': {'': 'some code again'}}, 'Test2': {'': 'Another test.'}}
     '''
     data = tree()
     heading_stack = []
@@ -69,6 +73,9 @@ def markdown_text_dicts(blocks):
                 heading_stack[:] = heading_stack[:_level-1]
             heading_stack.append(_block_text(block))
             get_data()
+        if block.get_type() in ('SetextHeading'):
+            heading_stack[-1] = _block_text(block)
+            get_data()
         if block.get_type() in ('Paragraph', 'List'):
             get_data().append(_block_text(block))
         if block.get_type() == 'FencedCode':
@@ -86,7 +93,7 @@ def markdown_text_dicts(blocks):
 
 def markdown_codeblock_languages(block):
     r'''
-    >>> markdown_codeblock_languages(parse(md_test))
+    DISABLE>>> markdown_codeblock_languages(parse(md_test))
     {'javascript': ['function test() {return "yes"}']}
     '''
     raise NotImplementedError()
