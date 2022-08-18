@@ -49,6 +49,15 @@ class GitHubForkData_MarkdownTemplateMixin():
     def markdown_html_url(self, commit):
         return f'https://github.com/{commit._get_repo_from_commit().full_name}/tree/{commit.sha}/{self.settings["markdown_template_filename"]}'  # Fragile and perilous!
 
+    @cached_property
+    def fork_markdown_templates(self):
+        markdown_templates = {
+            fork.owner.login: fork._get_markdown_json()
+            for fork in tqdm(self.forks)
+        }
+        markdown_templates[''] = self._get_markdown_json(self.repo)
+        return markdown_templates
+
 
 class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     def __init__(self, github, settings):
@@ -160,13 +169,6 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             for fork in tqdm(self.forks)
         }
 
-    @cached_property
-    def fork_markdown_templates(self):
-        return {
-            fork.owner.login: fork._get_markdown_json()
-            for fork in tqdm(self.forks)
-        }
-
 
 
 if __name__ == "__main__":
@@ -194,8 +196,8 @@ if __name__ == "__main__":
 
     #breakpoint()
 
-    with open('data.json', 'w') as filehandle:
-        json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
+    #with open('data.json', 'w') as filehandle:
+    #    json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
 
     with open('markdown_templates.json', 'w') as filehandle:
         json.dump(gg.fork_markdown_templates, filehandle, cls=JSONObjectEncoder)
