@@ -58,6 +58,10 @@ console.assert(get_text_at_headings(_TEST_DATA, ['Heading1', 2]) == 'final', 'He
 console.assert(get_text_at_headings(_TEST_DATA, ['Some nonsense', 'more nonsense']) == undefined, 'Nonsense')
 
 
+function url_for_username(data) {
+    // Oh .. I don't export this ...
+}
+
 
 const mainElement = document.getElementById('main') || document.getElementsByTagName('body').item(0)
 
@@ -92,12 +96,49 @@ function generate_headings(markdown_template) {
 }
 
 
+function generate_content_for_heading(data, headings) {
+    const c = document.createElement('div')
+
+    function textToP(text) {
+        for (let line of text.split('\n')) {
+            const p = document.createElement('p')
+            c.appendChild(p)
+            p.textContent = line
+        }
+    }
+
+    const h1 = document.createElement('h1')
+    c.appendChild(h1)
+    h1.textContent = headings.join(' -> ')
+    textToP(get_text_at_headings(data[''], headings))
+
+    const username_text = Object.entries(data).map(([k,v]) => [k,get_text_at_headings(v, headings)]).filter(([k,v])=>k)
+    for (let [username, text] of username_text) {
+        const username_element = document.createElement('h2')
+        c.appendChild(username_element)
+        username_element.textContent = username
+        textToP(text)
+    }
+
+    /*
+    const usernames_missing = username_text.filter(([k,v])=>!v).map(([k,v])=>k)
+    for (let username of usernames_missing) {
+        const username_element = document.createElement('h2')
+        c.appendChild(username_element)
+        username_element.textContent = username
+    }
+    */
+
+    return c
+}
+
+
 function render(data) {
     window.data = data
     mainElement.innerHTML = ''
     const headings = decodeURI(window.location.hash.replace('#','')).split(',').filter((i)=>typeof(i)==="string" && i.length);
     if (headings.length) {
-        console.log('TODO', headings)
+        mainElement.appendChild(generate_content_for_heading(data, headings))
     } else {
         mainElement.appendChild(generate_headings(data['']))
     }
