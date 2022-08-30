@@ -28,7 +28,7 @@
         }
         .passed::before {content: '✅';}
         .error::before {content: '❌';}
-        .failed::before {content: '❌';}
+        .failure::before {content: '❌';}
         .skipped::before {content: '➖';}
     </style>
 </head>
@@ -155,7 +155,7 @@ function generate_element_user(data) {
                 p.textContent = testcase['@name']
 
                 function testResult(testcase) {
-                    for (let state of ['error', 'failed', 'skipped']) {
+                    for (let state of ['error', 'failure', 'skipped']) {
                         if (state in testcase) {return state}
                     }
                     return 'passed'

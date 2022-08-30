@@ -102,8 +102,9 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                 self._tests_grouped_by_week,
                 self._get_markdown_json,  # Coupling overlap with Mixin?
             )
-            for fork in (self.repo, )  # self.repo.get_forks()  # TEMP: HACK for development
-            if fork.pushed_at > self.date_start
+            #for fork in (self.repo, )  # self.repo.get_forks()  # TEMP: HACK for development
+            for fork in self.repo.get_forks()
+            if fork.updated_at > self.date_start
         )
 
 
@@ -196,8 +197,8 @@ if __name__ == "__main__":
 
     #breakpoint()
 
-    #with open('data.json', 'w') as filehandle:
-    #    json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
+    with open('data.json', 'w') as filehandle:
+        json.dump(gg.fork_test_data, filehandle, cls=JSONObjectEncoder)
 
     with open('markdown_templates.json', 'w') as filehandle:
         json.dump(gg.fork_markdown_templates, filehandle, cls=JSONObjectEncoder)
