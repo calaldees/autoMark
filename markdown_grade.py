@@ -69,7 +69,7 @@ class MarkTemplate(NamedTuple):
         return testcase
 
 class MarkTemplateWordCount(MarkTemplate):
-    REGEX_WORDS_MARKS = re.compile(r'(?P<words>\d+)\s+word.*?(?P<marks>\d+)\s+mark')
+    REGEX_WORDS_MARKS = re.compile(r'(?P<words>\d+)(?:ish)?\s+word.*?(?P<marks>\d+)\s+mark')
     REGEX_WORD_COUNT = re.compile(r'\w+')
 
     @cached_property
@@ -89,7 +89,7 @@ class MarkTemplateWordCount(MarkTemplate):
             total_words = total_words - words
 
 class MarkTemplateUrls(MarkTemplate):
-    REGEX_URL_MARK = re.compile(r'\(.*?url.*?\)')
+    REGEX_URL_MARK = re.compile(r'\(.*?(url|link).*?\)')
     REGEX_URL_COUNT = re.compile(r'https?://')
     @cached_property
     def urls(self):
@@ -103,7 +103,27 @@ class MarkTemplateUrls(MarkTemplate):
             yield testcase
             urls += -1
 
+class MarkTemplateCodeBlockSimple(MarkTemplate):
+    # Incomplete - this is awful
+    REGEX_CODEBLOCK_MARK = re.compile(r'\(.*?code.*?(?P<marks>\d+)\s+mark')
+    REGEX_CODEBLOCK = re.compile(r'FencedCode:(\w+):(\d+)')
+    def _lang_lines(self, text):
+        return tuple(
+            (match.group(1), int(match.group(2)))
+            for match in self.REGEX_CODEBLOCK.finditer(text or '')
+        )
+    def testcases(self, target_text):
+        actual_number_of_code_blocks = len(self._lang_lines(target_text))
+        required_number_of_code_blocks = len(self.REGEX_CODEBLOCK_MARK.findall(self.template_text or ''))
+        for index in range(required_number_of_code_blocks):
+            testcase = super()._testcase(target_text, index)
+            if (actual_number_of_code_blocks - index) <= 0:
+                testcase.result = [junitparser.Error(f'Code block count failed: expected {index}', 'code_block')]
+            yield testcase
+
+
 class MarkTemplateCodeBlock(MarkTemplate):
+    # Incomplete - this is awful
     REGEX_CODEBLOCK = re.compile(r'FencedCode:(\w+):(\d+)')
     def _lang_lines(self, text):
         return tuple(
@@ -122,30 +142,30 @@ class MarkTemplateCodeBlock(MarkTemplate):
                 testcase.result = [junitparser.Error(f'Code block count failed: expected {index}', 'code_block')]
             yield testcase
 
-_mark_templates=(MarkTemplateWordCount, MarkTemplateUrls, MarkTemplateCodeBlock)
+_mark_templates=(MarkTemplateWordCount, MarkTemplateUrls, MarkTemplateCodeBlockSimple)
 
 def mark_template(template, target):
     r"""
     >>> template = {
     ...     'heading1.a': {
-    ...         '': '(10 words - 1 mark)\n(10 words - 1 mark)\n',
+    ...         '': '(10 words - 1 mark)\n(10ish words - 1 mark)\n',
     ...         'heading2': {
-    ...             '': 'FencedCode:javascript:5',
+    ...             '': '\n   (a code block of awesome - 1 mark)   \n',
     ...         }, 
     ...     },
     ...     'heading1.b': {
-    ...         '': '(url)',
+    ...         '': '(a link to a thing)',
     ...     }
     ... }
     >>> target = {
     ...     'heading1.a': {
     ...         '': 'I once was a chimp who lived on a boat. Chimps cant make or sail boats, so this is obviously fiction',
     ...         'heading2': {
-    ...             '': 'FencedCode:javascript:5',
+    ...             '': 'FencedCode:javascript:5   and another code block   FencedCode:javascript:5',
     ...         },
     ...     },
     ...     'heading1.b': {
-    ...         '': 'https://example.com/',
+    ...         '': 'i really think https://example.com/ is a good site',
     ...      },
     ... }
     >>> tuple(testcase.is_passed for testcase in mark_template(template, target))
