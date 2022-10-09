@@ -75,6 +75,8 @@ function generate_headings(data) {
     const markdown_template = data['']
     const c = document.createElement('div')
 
+    const total_submissions = Object.entries(data).filter(([k,v])=>k).length
+
     function appendChildHeadings(_data, headings=[]) {
         for (let [heading_name, content] of Object.entries(_data).filter(([k,v])=>k)) {
             const heading_link = document.createElement('a')
@@ -88,7 +90,7 @@ function generate_headings(data) {
 
             const heading_count = Object.entries(data).filter(([k,v])=>k).map(([k,v]) => [k,get_text_at_headings(v, headings_current)]).filter(([k,v])=>v!=get_text_at_headings(markdown_template, headings_current)).length
 
-            heading_element.textContent = `${heading_name}: ${heading_count}`
+            heading_element.textContent = `${heading_name}: ${heading_count}/${total_submissions}`
 
             if (content instanceof Object) {
                 appendChildHeadings(content, headings_current)
@@ -112,17 +114,19 @@ function generate_content_for_heading(data, headings) {
         }
     }
 
+    const template_text = get_text_at_headings(data[''], headings)
+
     const h1 = document.createElement('h1')
     c.appendChild(h1)
     h1.textContent = headings.join(' -> ')
-    textToP(get_text_at_headings(data[''], headings))
+    textToP(template_text)
 
     const username_text = Object.entries(data).map(([k,v]) => [k,get_text_at_headings(v, headings)]).filter(([k,v])=>k)
     for (let [username, text] of username_text) {
         const username_element = document.createElement('h2')
         c.appendChild(username_element)
         username_element.textContent = username
-        textToP(text)
+        textToP(text.replace(template_text, '🍩'))
     }
 
     /*

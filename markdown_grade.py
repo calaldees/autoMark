@@ -80,6 +80,7 @@ class MarkTemplateWordCount(MarkTemplate):
         )
 
     def testcases(self, target_text):
+        target_text = target_text.replace(self.template_text, '')  # Remove template from target (we don't want to count unmodified text)
         total_words = len(self.REGEX_WORD_COUNT.findall(target_text or ''))
         for index, (words, marks) in enumerate(self._words_marks):
             testcase = super()._testcase(target_text, index)
@@ -203,6 +204,8 @@ def markdown_grade(template, target, junit_filename=None, **kwargs):
 if __name__ == "__main__":
     markdown_grade(
         template='../frameworks_and_languages_module/technical_report.md',
-        target='README.md',
+        #target='README.md',
+        #target='./technical_report_target.md',
+        target='../frameworks_and_languages_module/technical_report.md',
         junit_filename='junit.xml',
     )

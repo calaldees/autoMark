@@ -111,7 +111,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
     @cached_property
     @cache_disk(
         args_to_bytes_func=lambda self: self.repo.full_name.encode('utf8'),
-        ttl=datetime.timedelta(days=6),
+        ttl=datetime.timedelta(days=1),
     )
     def workflow_run_artifacts_url_lookup(self):
         log.info("generating workflow_run_artifacts_url_lookup")
