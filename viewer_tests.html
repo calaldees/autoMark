@@ -107,8 +107,8 @@ function generate_element_table(data) {
                 const testsuite = week[testsuite_name]
                 if (!testsuite) {continue}
 
-                const num_tests = testsuite['@tests'] - testsuite['@skipped']
-                const num_pass = num_tests - testsuite['@failures'] - testsuite['@errors']
+                const num_tests = (testsuite['@tests']||0) - (testsuite['@skipped']||0)
+                const num_pass = num_tests - (testsuite['@failures']||0) - (testsuite['@errors']||0)
                 p.textContent = `${p.textContent} ${num_pass}/${num_tests}`
             }
         }

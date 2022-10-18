@@ -10,11 +10,14 @@ import xmljson
 
 
 from _utils import _add_methods
+class FileNotFoundInZipfileException(Exception):
+    pass
 def open_regex(zipfile, regex):
     regex = re.compile(regex) if isinstance(regex, str) else regex
     for filename in zipfile.namelist():
         if regex.match(filename):
             return zipfile.open(filename)
+    raise FileNotFoundInZipfileException(regex)
 
 
 

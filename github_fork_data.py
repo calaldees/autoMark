@@ -4,11 +4,11 @@ from functools import cache, cached_property
 import datetime
 from pathlib import Path
 from collections import defaultdict
-
+from typing import Sequence
 
 from _utils import harden, _add_methods, JSONObjectEncoder
 from cache_tools import cache_disk, DoNotPersistCacheException
-from github_artifacts import GithubArtifactsJUnit, junit_to_json
+from github_artifacts import GithubArtifactsJUnit, junit_to_json, FileNotFoundInZipfileException
 from markdown_grade import markdown_grade, load_markdown
 
 import github
@@ -135,14 +135,23 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             try:
                 github_artifact = GithubArtifactsJUnit(artifacts_url)
                 junit_json = github_artifact.junit_json
+                # HACK 
+                # Normalise junit output to single dict (sometimes we get lists of suites ... investigate why this is inconsistent)
+                # We want the item that actually has some tests (sometimes the RootElement has no tests ... )
+                if isinstance(junit_json, Sequence):
+                    for _junit_json in junit_json:
+                        if _junit_json.get('@tests') > 0:
+                            junit_json = _junit_json
+                            break
                 # HACK
                 # Overlay url property - post xml - because the XML was generated on CI without knowledge of it's context/where it was run. TODO: Add this to GithubArtifactsJUnit and remove this json nonsense/hack
                 junit_json.setdefault('properties',{}).setdefault('property',[]).append({"@name": "url", "@value": github_artifact.html_url_run})
                 return junit_json
+            except FileNotFoundInZipfileException as ex:
+                log.warning(f'Run contains no JUnitXML file - {github_artifact.html_url_run=}')
             except:
-                log.warning('Unable to get junit_json!?')
-                log.exception()
-                return None
+                log.exception(f'Unable to get junit_json!? {artifacts_url=}')
+                breakpoint()
         return tuple(filter(None, (
             get_junit(artifacts_url) for artifacts_url in artifact_urls
         )))
