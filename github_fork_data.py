@@ -51,6 +51,7 @@ class GitHubForkData_MarkdownTemplateMixin():
 
     @cached_property
     def fork_markdown_templates(self):
+        log.info('generating markdown templates for forks')
         markdown_templates = {
             fork.owner.login: fork._get_markdown_json()
             for fork in tqdm(self.forks)
@@ -176,6 +177,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
 
     @cached_property
     def fork_test_data(self):
+        log.info("iterating over forks")
         return {
             fork.owner.login: fork._tests_grouped_by_week()
             for fork in tqdm(self.forks)

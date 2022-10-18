@@ -79,7 +79,7 @@ function generate_element_table(data) {
     const weeks = get_weeks(data)
     const testsuite_names = get_testsuite_names(data)
 
-    table.appendChild(generate_thead('username', weeks))
+    table.appendChild(generate_thead('username', weeks.map(i=>parseInt(i)+1)))
 
     for (let [username, week_data] of Object.entries(data)) {
         const table_row = document.createElement('tr')
