@@ -104,7 +104,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
             )
             #for fork in (self.repo, )  # self.repo.get_forks()  # TEMP: HACK for development
             for fork in self.repo.get_forks()
-            if fork.updated_at > self.date_start
+            if fork.updated_at > self.date_start    # DEBUG and fork.owner.login == 'test_username_for_debug'
         )
 
 
@@ -140,6 +140,8 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                 junit_json.setdefault('properties',{}).setdefault('property',[]).append({"@name": "url", "@value": github_artifact.html_url_run})
                 return junit_json
             except:
+                log.warning('Unable to get junit_json!?')
+                log.exception()
                 return None
         return tuple(filter(None, (
             get_junit(artifacts_url) for artifacts_url in artifact_urls

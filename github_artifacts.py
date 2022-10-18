@@ -8,6 +8,16 @@ from os import environ
 import requests
 import xmljson
 
+
+from _utils import _add_methods
+def open_regex(zipfile, regex):
+    regex = re.compile(regex) if isinstance(regex, str) else regex
+    for filename in zipfile.namelist():
+        if regex.match(filename):
+            return zipfile.open(filename)
+
+
+
 def junit_to_json(element):
     if hasattr(element, 'getroot'):
         element = element.getroot()
@@ -34,7 +44,7 @@ class GithubArtifacts():
         return MappingProxyType({a["name"]: a["archive_download_url"] for a in self.data["artifacts"]})
     def get_zipfile(self, name):
         response = requests.get(self.artifact_urls[name], stream=True, allow_redirects=True, headers=GITHUB_API_HEADERS)
-        return ZipFile(io.BytesIO(response.content))
+        return _add_methods(ZipFile(io.BytesIO(response.content)), open_regex)
     @property
     def zipfile(self):
         assert self.data["total_count"] == 1
@@ -49,11 +59,11 @@ class GithubArtifactsJUnit(GithubArtifacts):
     @property
     def junit_minidom(self):
         from xml.dom.minidom import parse as parse_xml
-        return parse_xml(self.zipfile.open("junit.xml"))
+        return parse_xml(self.zipfile.open_regex("junit.*\.xml"))
     @property
     def junit_ElementTree(self):
         from xml.etree import ElementTree
-        return ElementTree.parse(self.zipfile.open("junit.xml"))
+        return ElementTree.parse(self.zipfile.open_regex("junit.*\.xml"))
         # TODO:
         # Maybe add/augment to the suite ElementTree 'properties','property', url:html_url_run
     @property
