@@ -16,13 +16,14 @@ log = logging.getLogger(__name__)
 
 GITHUB_USERNAME = "calaldees"
 GITHUB_REPO = "frameworks_and_languages_module"
-PATH_CLONE = './clone'
+PATH_CLONE = './clone2023'
+GITHUB_LOGINS_FILTER = tuple()  # e.g. ("enchant97", etc)  TODO: rest of class GitHub ids?
 
 from pathlib import Path
 path = Path(PATH_CLONE)
 path.mkdir(exist_ok=True)
 
-def run_shell(cmd, _TIMEOUT_SECONDS=10):
+def run_shell(cmd, _TIMEOUT_SECONDS=120):
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=_TIMEOUT_SECONDS)
 
 def get_github_forks(username, repo):
@@ -45,6 +46,9 @@ def do():
     log.info('get_github_forks')
     forks = tuple(map(ForkData.new, get_github_forks(GITHUB_USERNAME, GITHUB_REPO)))
     log.info(f'found {len(forks)}')
+
+    if GITHUB_LOGINS_FILTER:
+        forks = filter(lambda fork: fork.login in GITHUB_LOGINS_FILTER, forks)
 
     for fork in forks:
         path_target = path.joinpath(fork.login)
