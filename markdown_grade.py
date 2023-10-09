@@ -80,7 +80,7 @@ class MarkTemplateWordCount(MarkTemplate):
         )
 
     def testcases(self, target_text):
-        target_text = target_text.replace(self.template_text, '')  # Remove template from target (we don't want to count unmodified text)
+        target_text = (target_text or '').replace(self.template_text, '')  # Remove template from target (we don't want to count unmodified text)
         total_words = len(self.REGEX_WORD_COUNT.findall(target_text or ''))
         for index, (words, marks) in enumerate(self._words_marks):
             testcase = super()._testcase(target_text, index)
