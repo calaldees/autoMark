@@ -17,7 +17,31 @@ log = logging.getLogger(__name__)
 GITHUB_USERNAME = "calaldees"
 GITHUB_REPO = "frameworks_and_languages_module"
 PATH_CLONE = './clone2023'
-GITHUB_LOGINS_FILTER = tuple()  # e.g. ("enchant97", etc)  TODO: rest of class GitHub ids?
+GITHUB_LOGINS_FILTER = tuple(filter(None, """
+aromeni
+samjesus8
+AlexIvg
+srose99
+sachithsulakkhana
+CL614
+carloscccu
+RyanJones999
+cotezea
+mdakhtaruzjaman
+ChokMilz
+JaniduR1
+IU14
+RyanJudd96
+PasinduJayalal
+Alex-Bartlett
+jasonyoung00
+JamesClarke7283
+jpinn97
+LukeK2021
+Andrew827
+RobertBlackwell01
+""".split("\n")))  # e.g. ("enchant97", etc)  TODO: rest of class GitHub ids?
+
 
 from pathlib import Path
 path = Path(PATH_CLONE)
@@ -56,11 +80,12 @@ def do():
             # https://stackoverflow.com/a/48566525/3356840
             log.info(f'pull: {path_target}')
             cmd_result = run_shell(['git', '-C', path_target, 'pull']) #f'git -C {path_target} pull'
-            assert cmd_result.returncode == 0
+            assert cmd_result.returncode == 0, cmd_result
+            #print(cmd_result)   # debug to see which files have changed
         else:  # clone if not exist
             log.info(f'clone: {path_target}')
             cmd_result = run_shell(['git', 'clone', fork.clone_url, path_target])  # f'git clone {fork.clone_url} {path_target}'
-            assert cmd_result.returncode == 0
+            assert cmd_result.returncode == 0, cmd_result
             assert path_target.is_dir()
 
 # TODO: 

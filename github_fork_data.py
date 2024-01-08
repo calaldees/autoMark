@@ -152,7 +152,7 @@ class GitHubForkData(GitHubForkData_MarkdownTemplateMixin):
                 log.warning(f'Run contains no JUnitXML file - {github_artifact.html_url_run=}')
             except:
                 log.exception(f'Unable to get junit_json!? {artifacts_url=}')
-                breakpoint()
+                #breakpoint()
         return tuple(filter(None, (
             get_junit(artifacts_url) for artifacts_url in artifact_urls
         )))
