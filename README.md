@@ -69,3 +69,14 @@ GithubArtifactsJUnit(rr.artifacts_url).junit_json
 ```
 
 * [Junit Specification](https://stackoverflow.com/a/9410271/3356840)
+
+
+```bash
+find . -iname technical_report.md | xargs grep "Hardcoded Routes"
+```
+
+```bash
+export GITHUB_TOKEN=github_pat_xxxx
+python3 github_fork_data.py
+python3 -m http.server
+```
